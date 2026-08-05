@@ -1,0 +1,7 @@
+.claude/
+.DS_Store
+.idea/
+dist/
+/azproviderlint
+*.test
+*.out
