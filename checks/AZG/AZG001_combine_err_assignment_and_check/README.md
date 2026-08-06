@@ -1,8 +1,6 @@
 # AZG001
 
-The AZG001 analyzer reports `_, err := SomeFunc()` assignments immediately followed by
-`if err != nil`, which should be combined into a single `if` init statement to keep the
-error scoped to its check and the happy path unindented.
+The AZG001 analyzer reports `_, err := SomeFunc()` assignments immediately followed by `if err != nil`, which should be combined into a single `if` init statement to keep the error scoped to its check and the happy path unindented.
 
 ## Flagged Code
 
@@ -23,8 +21,7 @@ if _, err := client.Delete(ctx, id); err != nil {
 
 ## Ignoring Reports
 
-When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code
-comment at the end of the offending line or on the line immediately preceding it:
+When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:
 
 ```go
 _, err := client.Delete(ctx, id) //nolint:azproviderlint

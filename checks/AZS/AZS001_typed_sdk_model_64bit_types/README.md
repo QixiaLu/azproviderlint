@@ -1,13 +1,8 @@
 # AZS001
 
-The AZS001 analyzer reports typed SDK model fields (struct fields tagged `tfschema`) using
-non-64-bit numeric types: `int`, `int16` or `int32` instead of `int64`, and `float32`
-instead of `float64`.
+The AZS001 analyzer reports typed SDK model fields (struct fields tagged `tfschema`) using non-64-bit numeric types: `int`, `int16` or `int32` instead of `int64`, and `float32` instead of `float64`.
 
-The typed SDK's `Encode`/`Decode` work with `int64` and `float64`; models using other
-widths fail at runtime. The check covers slices, maps and pointers of these types, and
-resolves named types and aliases through the type checker (matching what `reflect.Kind()`
-sees at runtime), so `type Capacity int` is also flagged.
+The typed SDK's `Encode`/`Decode` work with `int64` and `float64`; models using other widths fail at runtime. The check covers slices, maps and pointers of these types, and resolves named types and aliases through the type checker (matching what `reflect.Kind()` sees at runtime), so `type Capacity int` is also flagged.
 
 ## Flagged Code
 
@@ -33,8 +28,7 @@ type ServerModel struct {
 
 ## Ignoring Reports
 
-When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code
-comment at the end of the offending line or on the line immediately preceding it:
+When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:
 
 ```go
 Capacity int `tfschema:"capacity"` //nolint:azproviderlint

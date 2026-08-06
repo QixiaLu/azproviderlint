@@ -1,11 +1,8 @@
 # AZR006
 
-The AZR006 analyzer reports `ctx` being assigned directly from the provider meta object
-(`ctx := meta.(*clients.Client).StopContext`).
+The AZR006 analyzer reports `ctx` being assigned directly from the provider meta object (`ctx := meta.(*clients.Client).StopContext`).
 
-Custom Timeouts only work when the StopContext is wrapped with the appropriate timeouts
-helper (`timeouts.ForCreate`, `ForCreateUpdate`, `ForRead`, `ForUpdate` or `ForDelete`) and
-the resource configures `Timeouts` on its schema.
+Custom Timeouts only work when the StopContext is wrapped with the appropriate timeouts helper (`timeouts.ForCreate`, `ForCreateUpdate`, `ForRead`, `ForUpdate` or `ForDelete`) and the resource configures `Timeouts` on its schema.
 
 ## Flagged Code
 
@@ -39,8 +36,7 @@ Timeouts: &pluginsdk.ResourceTimeout{
 
 ## Ignoring Reports
 
-When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code
-comment at the end of the offending line or on the line immediately preceding it:
+When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:
 
 ```go
 ctx := meta.(*clients.Client).StopContext //nolint:azproviderlint

@@ -1,12 +1,8 @@
 # AZR003
 
-The AZR003 analyzer reports `d.Get(...)` (untyped resources, in the function registered as
-`Delete:`) and `metadata.ResourceData.Get(...)` (typed resources, in the `Delete()
-sdk.ResourceFunc` method) being used inside a resource's Delete function.
+The AZR003 analyzer reports `d.Get(...)` (untyped resources, in the function registered as `Delete:`) and `metadata.ResourceData.Get(...)` (typed resources, in the `Delete() sdk.ResourceFunc` method) being used inside a resource's Delete function.
 
-During deletion the state may be partial or the config unavailable, so schema reads do not
-work as expected in Delete. Everything a Delete function needs should come from parsing the
-Resource ID.
+During deletion the state may be partial or the config unavailable, so schema reads do not work as expected in Delete. Everything a Delete function needs should come from parsing the Resource ID.
 
 ## Flagged Code
 
@@ -42,8 +38,7 @@ func resourceExampleDelete(d *pluginsdk.ResourceData, meta interface{}) error {
 
 ## Ignoring Reports
 
-When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code
-comment at the end of the offending line or on the line immediately preceding it:
+When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:
 
 ```go
 name := d.Get("name").(string) //nolint:azproviderlint

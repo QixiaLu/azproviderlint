@@ -1,8 +1,6 @@
 # AZG002
 
-The AZG002 analyzer reports error messages containing `invalid format of ...`. These
-messages aren't descriptive - they tell the user something is wrong without telling them
-how to fix it. Error messages should describe the expected format instead.
+The AZG002 analyzer reports error messages containing `invalid format of ...`. These messages aren't descriptive - they tell the user something is wrong without telling them how to fix it. Error messages should describe the expected format instead.
 
 ## Flagged Code
 
@@ -18,8 +16,7 @@ return fmt.Errorf("%q must start with a letter, may contain letters and numbers,
 
 ## Ignoring Reports
 
-When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code
-comment at the end of the offending line or on the line immediately preceding it:
+When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:
 
 ```go
 return fmt.Errorf("invalid format of %q", name) //nolint:azproviderlint

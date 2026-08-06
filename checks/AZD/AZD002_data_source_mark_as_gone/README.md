@@ -2,9 +2,7 @@
 
 The AZD002 analyzer reports data sources calling `metadata.MarkAsGone(...)`.
 
-`MarkAsGone` is for resources, where a deleted remote object should be removed from state.
-A data source that cannot find what the user asked for should return an error instead, so
-the user learns why their configuration cannot be applied.
+`MarkAsGone` is for resources, where a deleted remote object should be removed from state. A data source that cannot find what the user asked for should return an error instead, so the user learns why their configuration cannot be applied.
 
 This check only applies to files whose name contains `data_source`.
 
@@ -26,8 +24,7 @@ if response.WasNotFound(resp.HttpResponse) {
 
 ## Ignoring Reports
 
-When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code
-comment at the end of the offending line or on the line immediately preceding it:
+When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:
 
 ```go
 return metadata.MarkAsGone(id) //nolint:azproviderlint
