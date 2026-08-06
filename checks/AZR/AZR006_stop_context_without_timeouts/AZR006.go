@@ -18,6 +18,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZR006",
 	Doc:      "check for ctx being assigned directly from the provider meta object instead of a timeouts-wrapped StopContext",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR006_stop_context_without_timeouts/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

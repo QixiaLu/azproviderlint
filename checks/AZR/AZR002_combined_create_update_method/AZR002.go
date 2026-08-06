@@ -17,6 +17,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZR002",
 	Doc:      "check for resources registering a combined CreateUpdate method instead of separate Create and Update methods",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR002_combined_create_update_method/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

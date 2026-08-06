@@ -16,6 +16,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZR005",
 	Doc:      "check for assignments to the TreatUserSpecifiedSegmentsAsCaseInsensitive feature flag which is not ready for use",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR005_case_insensitive_segments_feature_flag/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

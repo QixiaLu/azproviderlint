@@ -17,6 +17,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZR004",
 	Doc:      "check for Resource IDs being compared with == or != instead of resourceids.Match",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR004_resource_id_equality_comparison/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

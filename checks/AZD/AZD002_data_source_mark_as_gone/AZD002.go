@@ -17,6 +17,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZD002_mark_as_gone",
 	Doc:      "check for data sources using MarkAsGone instead of returning an error when the resource cannot be found",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZD/AZD002_data_source_mark_as_gone/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

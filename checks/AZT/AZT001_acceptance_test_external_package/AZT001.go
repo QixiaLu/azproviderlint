@@ -16,6 +16,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name: "AZT001",
 	Doc:  "check that resource and data source acceptance test files use an external _test package to prevent circular dependencies",
+	URL:  "https://github.com/katbyte/azproviderlint/blob/main/checks/AZT/AZT001_acceptance_test_external_package/README.md",
 	Run:  run,
 }
 

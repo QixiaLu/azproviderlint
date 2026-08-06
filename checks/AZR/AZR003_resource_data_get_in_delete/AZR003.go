@@ -17,6 +17,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZR003",
 	Doc:      "check for ResourceData.Get being used inside a resource's Delete function where it does not work as expected",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR003_resource_data_get_in_delete/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

@@ -19,6 +19,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZT002",
 	Doc:      "check for acceptance tests reading provider credentials from the environment instead of creating a user assigned identity",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZT/AZT002_credentials_from_environment/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

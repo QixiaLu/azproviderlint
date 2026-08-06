@@ -19,6 +19,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZG002",
 	Doc:      "check for unclear 'invalid format of' error messages that should describe the expected format instead",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZG/AZG002_error_should_describe_expected_format/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

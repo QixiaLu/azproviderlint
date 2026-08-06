@@ -16,6 +16,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZG001",
 	Doc:      "check for '_, err := SomeFunc()' followed by 'if err != nil' that should be combined into a single 'if' init statement",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZG/AZG001_combine_err_assignment_and_check/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

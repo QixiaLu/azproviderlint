@@ -18,6 +18,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZD001_dataSourceId",
 	Doc:      "check for data sources calling SetId with an empty string instead of returning an error when the resource cannot be found",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZD/AZD001_data_source_empty_set_id/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

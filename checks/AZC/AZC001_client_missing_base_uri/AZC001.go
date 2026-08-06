@@ -17,6 +17,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZC001_client_base_uri",
 	Doc:      "check for Azure SDK clients created without the resource manager endpoint explicitly specified via NewFoosClientWithBaseURI",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZC/AZC001_client_missing_base_uri/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

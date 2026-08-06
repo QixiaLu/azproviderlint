@@ -19,6 +19,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZS001",
 	Doc:      "check that tfschema-tagged model fields use 64-bit numeric types (int64/float64) as required by the typed SDK's Encode/Decode",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZS/AZS001_typed_sdk_model_64bit_types/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

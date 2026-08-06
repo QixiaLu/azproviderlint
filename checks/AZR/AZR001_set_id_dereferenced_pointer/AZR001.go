@@ -17,6 +17,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZR001",
 	Doc:      "check for SetId being called with a dereferenced pointer instead of a Resource ID Formatter/Parser's id.ID()",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR001_set_id_dereferenced_pointer/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }
