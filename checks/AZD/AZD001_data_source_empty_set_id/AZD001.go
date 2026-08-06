@@ -1,4 +1,4 @@
-// Package AZD001_dataSourceId defines an analyzer that reports data sources calling SetId with an empty
+// Package AZD001 defines an analyzer that reports data sources calling SetId with an empty
 // string instead of returning an error when the resource cannot be found.
 package AZD001
 
@@ -16,7 +16,7 @@ import (
 // Analyzer checks for `d.SetId("")` in data source files. Data Sources should return an
 // error when a resource cannot be found rather than setting an empty ID.
 var Analyzer = &analysis.Analyzer{
-	Name:     "AZD001_dataSourceId",
+	Name:     "AZD001",
 	Doc:      "check for data sources calling SetId with an empty string instead of returning an error when the resource cannot be found",
 	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZD/AZD001_data_source_empty_set_id/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},

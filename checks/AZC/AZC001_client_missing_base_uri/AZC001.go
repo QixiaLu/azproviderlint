@@ -1,4 +1,4 @@
-// Package AZC001_client_base_uri defines an analyzer that reports Azure SDK clients being created without
+// Package AZC001 defines an analyzer that reports Azure SDK clients being created without
 // the resource manager endpoint explicitly specified.
 package AZC001
 
@@ -15,7 +15,7 @@ import (
 // (track1 & kermit) clients should be created with `NewFoosClientWithBaseURI(...)` so the
 // resource manager endpoint is explicitly specified (required for sovereign clouds).
 var Analyzer = &analysis.Analyzer{
-	Name:     "AZC001_client_base_uri",
+	Name:     "AZC001",
 	Doc:      "check for Azure SDK clients created without the resource manager endpoint explicitly specified via NewFoosClientWithBaseURI",
 	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZC/AZC001_client_missing_base_uri/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},

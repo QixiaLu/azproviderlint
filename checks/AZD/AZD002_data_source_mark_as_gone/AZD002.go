@@ -1,4 +1,4 @@
-// Package AZD002_mark_as_gone defines an analyzer that reports data sources using MarkAsGone instead of
+// Package AZD002 defines an analyzer that reports data sources using MarkAsGone instead of
 // returning an error when the resource cannot be found.
 package AZD002
 
@@ -15,7 +15,7 @@ import (
 // Analyzer checks for `metadata.MarkAsGone(...)` in data source files. Data Sources should
 // return an error when a resource cannot be found rather than marking the resource as gone.
 var Analyzer = &analysis.Analyzer{
-	Name:     "AZD002_mark_as_gone",
+	Name:     "AZD002",
 	Doc:      "check for data sources using MarkAsGone instead of returning an error when the resource cannot be found",
 	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZD/AZD002_data_source_mark_as_gone/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
