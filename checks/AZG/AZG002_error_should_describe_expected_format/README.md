@@ -21,3 +21,9 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 ```go
 return fmt.Errorf("invalid format of %q", name) //nolint:azproviderlint
 ```
+
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZG002` comment instead, in the same positions:
+
+```go
+return fmt.Errorf("invalid format of %q", name) //azignore:AZG002
+```

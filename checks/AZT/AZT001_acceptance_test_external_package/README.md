@@ -25,3 +25,9 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 ```go
 package compute //nolint:azproviderlint
 ```
+
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZT001` comment instead, in the same positions:
+
+```go
+package compute //azignore:AZT001
+```

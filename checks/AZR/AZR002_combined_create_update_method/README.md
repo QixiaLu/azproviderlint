@@ -33,3 +33,9 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 ```go
 Create: resourceExampleCreateUpdate, //nolint:azproviderlint
 ```
+
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZR002` comment instead, in the same positions:
+
+```go
+Create: resourceExampleCreateUpdate, //azignore:AZR002
+```

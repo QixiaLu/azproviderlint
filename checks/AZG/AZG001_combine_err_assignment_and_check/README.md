@@ -44,3 +44,12 @@ if err != nil {
 	return err
 }
 ```
+
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZG001` comment instead, in the same positions:
+
+```go
+_, err := client.Delete(ctx, id) //azignore:AZG001
+if err != nil {
+	return err
+}
+```

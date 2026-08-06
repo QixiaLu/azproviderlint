@@ -117,3 +117,16 @@ _No rules yet — reserved for property naming convention rules (e.g. percentage
 ### AZV — Validation
 
 _No rules yet — reserved for missing/incorrect validation rules (e.g. string arguments without a `ValidateFunc`)._
+
+## Ignoring Reports
+
+When run via golangci-lint, all azproviderlint reports on a line can be ignored with a `//nolint:azproviderlint` comment at the end of the offending line or on the line immediately preceding it.
+
+To ignore a specific check — leaving the others active, and working under any driver including the standalone binary — use a `//azignore:<Rule>` comment in the same positions. Multiple rules can be listed separated by commas:
+
+```go
+d.SetId(*read.ID) //azignore:AZR001
+
+//azignore:AZG001,AZR003
+err := client.Delete(ctx, id)
+```
