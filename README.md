@@ -70,7 +70,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 
 | Rule | Description |
 |------|-------------|
-| [AZG001](checks/AZG/AZG001_combine_err_assignment_and_check) | `_, err := SomeFunc()` followed by `if err != nil` should be combined into a single `if` init statement |
+| [AZG001](checks/AZG/AZG001_combine_err_assignment_and_check) | `err := SomeFunc()` or `_, err := SomeFunc()` followed by `if err != nil` should be combined into a single `if` init statement |
 | [AZG002](checks/AZG/AZG002_error_should_describe_expected_format) | Error messages should describe the expected format instead of saying `invalid format of ...` |
 
 ### AZR — Resource Implementation

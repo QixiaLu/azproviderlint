@@ -1,6 +1,8 @@
 # AZG001
 
-The AZG001 analyzer reports `_, err := SomeFunc()` assignments immediately followed by `if err != nil`, which should be combined into a single `if` init statement to keep the error scoped to its check and the happy path unindented.
+The AZG001 analyzer reports `err := SomeFunc()` and `_, err := SomeFunc()` assignments immediately followed by `if err != nil`, which should be combined into a single `if` init statement to keep the error scoped to its check and the happy path unindented.
+
+Assignments are only reported when combining is safe: any non-`err` values must be blank identifiers (`_`), and an `err` declared with `:=` must not be used again after the `if` statement (combining would move it into the `if` statement's scope).
 
 ## Flagged Code
 
@@ -11,11 +13,24 @@ if err != nil {
 }
 ```
 
+```go
+err := resourceGroupClient.WaitForDeletion(ctx, id)
+if err != nil {
+	return fmt.Errorf("waiting for deletion of %s: %+v", id, err)
+}
+```
+
 ## Passing Code
 
 ```go
 if _, err := client.Delete(ctx, id); err != nil {
 	return fmt.Errorf("deleting %s: %+v", id, err)
+}
+```
+
+```go
+if err := resourceGroupClient.WaitForDeletion(ctx, id); err != nil {
+	return fmt.Errorf("waiting for deletion of %s: %+v", id, err)
 }
 ```
 

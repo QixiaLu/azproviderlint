@@ -1,21 +1,22 @@
-// Package AZG001 defines an analyzer that reports '_, err := SomeFunc()' assignments
-// that should be combined with the following 'if err != nil' into a single 'if' init statement.
+// Package AZG001 defines an analyzer that reports 'err := SomeFunc()' and '_, err := SomeFunc()'
+// assignments that should be combined with the following 'if err != nil' into a single 'if' init statement.
 package AZG001
 
 import (
 	"go/ast"
 	"go/token"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-// Analyzer checks for `_, err := SomeFunc()` followed immediately by `if err != nil`
-// and reports that they should be combined into a single `if` init statement.
+// Analyzer checks for `err := SomeFunc()` or `_, err := SomeFunc()` followed immediately by
+// `if err != nil` and reports that they should be combined into a single `if` init statement.
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZG001",
-	Doc:      "check for '_, err := SomeFunc()' followed by 'if err != nil' that should be combined into a single 'if' init statement",
+	Doc:      "check for 'err := SomeFunc()' or '_, err := SomeFunc()' followed by 'if err != nil' that should be combined into a single 'if' init statement",
 	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZG/AZG001_combine_err_assignment_and_check/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
@@ -49,25 +50,36 @@ func checkBlock(pass *analysis.Pass, stmts []ast.Stmt) {
 			continue
 		}
 
-		// Must be := or = with exactly 2 LHS values
 		if assignStmt.Tok != token.DEFINE && assignStmt.Tok != token.ASSIGN {
 			continue
 		}
-		if len(assignStmt.Lhs) != 2 {
-			continue
-		}
 
-		// First LHS must be blank identifier (_)
-		firstIdent, ok := assignStmt.Lhs[0].(*ast.Ident)
-		if !ok || firstIdent.Name != "_" {
+		// The last LHS value must be "err" and any values before it must be blank identifiers (_)
+		lhsNames := make([]string, 0, len(assignStmt.Lhs))
+		for _, lhs := range assignStmt.Lhs {
+			ident, ok := lhs.(*ast.Ident)
+			if !ok {
+				break
+			}
+			lhsNames = append(lhsNames, ident.Name)
+		}
+		if len(lhsNames) != len(assignStmt.Lhs) {
 			continue
 		}
-
-		// Second LHS must be "err"
-		secondIdent, ok := assignStmt.Lhs[1].(*ast.Ident)
-		if !ok || secondIdent.Name != "err" {
+		if lhsNames[len(lhsNames)-1] != "err" {
 			continue
 		}
+		allBlankPrefix := true
+		for _, name := range lhsNames[:len(lhsNames)-1] {
+			if name != "_" {
+				allBlankPrefix = false
+				break
+			}
+		}
+		if !allBlankPrefix {
+			continue
+		}
+		errIdent := assignStmt.Lhs[len(assignStmt.Lhs)-1].(*ast.Ident)
 
 		// Next statement must be `if err != nil`
 		ifStmt, ok := stmts[i+1].(*ast.IfStmt)
@@ -85,9 +97,43 @@ func checkBlock(pass *analysis.Pass, stmts []ast.Stmt) {
 			continue
 		}
 
+		// Combining a := declaration moves err into the if statement's scope, so it must
+		// not be used again after the if statement
+		if assignStmt.Tok == token.DEFINE && usedAfter(pass, errIdent, stmts[i+2:]) {
+			continue
+		}
+
 		pass.Reportf(assignStmt.Pos(),
-			"'_, err' assignment should be combined with the following 'if err != nil' into a single 'if' init statement")
+			"'%s' assignment should be combined with the following 'if err != nil' into a single 'if' init statement",
+			strings.Join(lhsNames, ", "))
 	}
+}
+
+// usedAfter reports whether the variable declared by ident is referenced in any of stmts.
+func usedAfter(pass *analysis.Pass, ident *ast.Ident, stmts []ast.Stmt) bool {
+	obj := pass.TypesInfo.ObjectOf(ident)
+	if obj == nil {
+		return true // can't resolve, assume it is used
+	}
+
+	for _, stmt := range stmts {
+		used := false
+		ast.Inspect(stmt, func(n ast.Node) bool {
+			id, ok := n.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			if pass.TypesInfo.ObjectOf(id) == obj {
+				used = true
+			}
+			return !used
+		})
+		if used {
+			return true
+		}
+	}
+
+	return false
 }
 
 // isErrNotNil checks if the expression is `err != nil`.

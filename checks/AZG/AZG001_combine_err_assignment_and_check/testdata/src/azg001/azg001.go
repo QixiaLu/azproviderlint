@@ -19,6 +19,59 @@ func badExampleAssign() {
 	}
 }
 
+// Should be flagged: single err assignment followed by if err != nil
+func badExampleSingle() {
+	err := doSomething() // want `'err' assignment should be combined with the following 'if err != nil' into a single 'if' init statement`
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Should be flagged: single err assignment using = instead of :=
+func badExampleSingleAssign() {
+	var err error
+	err = doSomething() // want `'err' assignment should be combined with the following 'if err != nil' into a single 'if' init statement`
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Should be flagged: err is used after the if but was assigned with =, so combining keeps it in scope
+func badExampleAssignUsedAfter() {
+	var err error
+	err = doSomething() // want `'err' assignment should be combined with the following 'if err != nil' into a single 'if' init statement`
+	if err != nil {
+		panic(err)
+	}
+	_ = err
+}
+
+// Should be flagged: multiple blank identifiers before err
+func badExampleMultiBlank() {
+	_, _, err := multiReturn() // want `'_, _, err' assignment should be combined with the following 'if err != nil' into a single 'if' init statement`
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Should NOT be flagged: err is declared with := and used after the if statement
+func goodSingleUsedAfter() {
+	err := doSomething()
+	if err != nil {
+		panic(err)
+	}
+	_ = err
+}
+
+// Should NOT be flagged: err is declared with := and used after the if statement
+func goodUsedAfter() error {
+	_, err := fmt.Println("hello")
+	if err != nil {
+		panic(err)
+	}
+	return err
+}
+
 // Should NOT be flagged: already combined
 func goodCombined() {
 	if _, err := fmt.Println("hello"); err != nil {
@@ -79,4 +132,8 @@ func goodIfWithInit() {
 
 func multiReturn() (int, int, error) {
 	return 1, 2, nil
+}
+
+func doSomething() error {
+	return nil
 }
