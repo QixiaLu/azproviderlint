@@ -19,9 +19,17 @@ A custom [golangci-lint](https://golangci-lint.run/) module plugin providing Azu
 go install github.com/katbyte/azproviderlint@latest
 ```
 
-Then run directly:
+Then run directly (all rules run by default):
 ```bash
 azproviderlint ./...
+```
+
+Each rule is also a flag, and setting any rule flag switches to running only the named rules; a category on its own (`-AZG`) runs every rule in that category:
+```bash
+azproviderlint -AZG001 ./...
+azproviderlint -AZR001 -AZR003 ./...
+azproviderlint -AZG ./...
+azproviderlint -AZG -AZR001 ./...
 ```
 
 ### As a golangci-lint Plugin
@@ -61,6 +69,23 @@ linters:
         settings:
           disable: [AZR002]
 ```
+
+To run just azproviderlint through the custom binary, skipping every other linter:
+```bash
+custom-gcl run --enable-only azproviderlint ./...
+```
+
+There is no CLI flag for a single rule — combine `--enable-only` with an `enable: [AZG001]` list in the plugin settings above, or use the standalone binary's per-rule flags.
+
+### Why the plugin over the standalone binary?
+
+The plugin requires every consumer to build a custom golangci-lint binary (`golangci-lint custom`), but that one-time cost buys a lot on a codebase the size of a provider:
+
+- **One package-load instead of two.** On azurerm this is the dominant cost — loading and type-checking the provider codebase (with its enormous vendor tree) takes minutes, and every separate analysis binary pays it again from scratch. Folding checks into golangci-lint amortizes it, and golangci-lint's result cache makes warm local re-runs dramatically faster; a standalone multichecker reloads the world every single time.
+- **Unified config and reporting.** `.golangci.yml` path exclusions (generated files, `/sdk/`, `third_party` — already curated in the provider repo) apply to these checks for free; one output stream, one CI job, SARIF/annotations, and `--new-from-rev` — the killer feature for a codebase with 22+ pre-existing findings per service, since checks can be enforced on new code only instead of azignoring a decade of history.
+- **`//nolint` works uniformly** alongside `//azignore` (see [Ignoring Reports](#ignoring-reports)).
+
+The standalone binary remains the right tool for one-off or single-rule runs (`azproviderlint -AZG001 ./...`), editor integrations that expect a plain `analysis`-style vet tool, and quick iteration while developing new checks.
 
 ## Rules
 
@@ -107,7 +132,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 
 | Rule | Description |
 |------|-------------|
-| [AZT001](checks/AZT/AZT001_acceptance_test_external_package) | Resource and data source acceptance test files must use an external `_test` package to prevent circular dependencies |
+| [AZT001](checks/AZT/AZT001_acceptance_test_external_package) | Acceptance test files (resource, data source, action, ephemeral — incl. list and generated variants) must use an external `_test` package to prevent circular dependencies |
 | [AZT002](checks/AZT/AZT002_credentials_from_environment) | Tests must not obtain credentials via `os.Getenv("ARM_CLIENT_ID"/"ARM_CLIENT_SECRET"/"ARM_CLIENT_SECRET_ALT")` — create an `azurerm_user_assigned_identity` with minimal permissions instead |
 
 ### AZN — Naming Conventions

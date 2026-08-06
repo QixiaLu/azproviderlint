@@ -1,6 +1,6 @@
 # AZT001
 
-The AZT001 analyzer reports resource and data source acceptance test files (`*resource*_test.go`, `*data_source*_test.go`) that use the service package instead of an external `_test` package.
+The AZT001 analyzer reports acceptance test files that use the service package instead of an external `_test` package. A file counts as an acceptance test file when its name ends in `_resource_test.go`, `_data_source_test.go`, `_action_test.go` or `_ephemeral_test.go` — including the `_list`, `_identity` and `_gen` (generated) variants such as `_resource_list_test.go` and `_resource_identity_gen_test.go`. The suffix must match exactly: unit tests that merely contain `resource` in their name (`storage_queue_resource_manager_id_test.go`, `parse/resource_group_assignment_test.go`) are not acceptance tests and are ignored.
 
 Acceptance tests must live in a `_test` package to prevent a circular dependency between the service package and the acceptance test framework.
 

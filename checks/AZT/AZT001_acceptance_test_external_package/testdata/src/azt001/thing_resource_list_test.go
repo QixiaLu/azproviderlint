@@ -2,7 +2,7 @@ package azt001 // want `acceptance test files must use a _test package to preven
 
 import "testing"
 
-func TestAccThing(t *testing.T) {
+func TestAccThingResourceList(t *testing.T) {
 	if Thing() != "thing" {
 		t.Fatal("unexpected")
 	}
