@@ -1,0 +1,133 @@
+package azg001
+
+import "fmt"
+
+// Should be flagged: _, err assignment followed by if err != nil
+func badExample() {
+	if _, err := fmt.Println("hello"); err != nil {
+		panic(err)
+	}
+}
+
+// Should be flagged: using = instead of :=
+func badExampleAssign() {
+	var err error
+	if _, err = fmt.Println("hello"); err != nil {
+		panic(err)
+	}
+}
+
+// Should be flagged: single err assignment followed by if err != nil
+func badExampleSingle() {
+	if err := doSomething(); err != nil {
+		panic(err)
+	}
+}
+
+// Should be flagged: single err assignment using = instead of :=
+func badExampleSingleAssign() {
+	var err error
+	if err = doSomething(); err != nil {
+		panic(err)
+	}
+}
+
+// Should be flagged: err is used after the if but was assigned with =, so combining keeps it in scope
+func badExampleAssignUsedAfter() {
+	var err error
+	if err = doSomething(); err != nil {
+		panic(err)
+	}
+	_ = err
+}
+
+// Should be flagged: multiple blank identifiers before err
+func badExampleMultiBlank() {
+	if _, _, err := multiReturn(); err != nil {
+		panic(err)
+	}
+}
+
+// Should NOT be flagged: err is declared with := and used after the if statement
+func goodSingleUsedAfter() {
+	err := doSomething()
+	if err != nil {
+		panic(err)
+	}
+	_ = err
+}
+
+// Should NOT be flagged: err is declared with := and used after the if statement
+func goodUsedAfter() error {
+	_, err := fmt.Println("hello")
+	if err != nil {
+		panic(err)
+	}
+	return err
+}
+
+// Should NOT be flagged: already combined
+func goodCombined() {
+	if _, err := fmt.Println("hello"); err != nil {
+		panic(err)
+	}
+}
+
+// Should NOT be flagged: not followed by if err != nil
+func goodNoIf() {
+	_, err := fmt.Println("hello")
+	_ = err
+}
+
+// Should NOT be flagged: the error is used between assignment and if
+func goodIntervening() {
+	_, err := fmt.Println("hello")
+	fmt.Println("something else")
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Should NOT be flagged: more than 2 return values
+func goodMultiReturn() {
+	a, b, err := multiReturn()
+	if err != nil {
+		panic(err)
+	}
+	_ = a
+	_ = b
+}
+
+// Should NOT be flagged: first value is not blank
+func goodNamedReturn() {
+	n, err := fmt.Println("hello")
+	if err != nil {
+		panic(err)
+	}
+	_ = n
+}
+
+// Should NOT be flagged: if has a different condition
+func goodDifferentCondition() {
+	_, err := fmt.Println("hello")
+	if err == nil {
+		fmt.Println("ok")
+	}
+}
+
+// Should NOT be flagged: if already has an init statement
+func goodIfWithInit() {
+	_, err := fmt.Println("hello")
+	if x := 1; err != nil {
+		panic(err)
+		_ = x
+	}
+}
+
+func multiReturn() (int, int, error) {
+	return 1, 2, nil
+}
+
+func doSomething() error {
+	return nil
+}

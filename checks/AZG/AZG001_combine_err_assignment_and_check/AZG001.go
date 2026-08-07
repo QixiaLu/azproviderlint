@@ -3,7 +3,10 @@
 package AZG001
 
 import (
+	"bytes"
+	"fmt"
 	"go/ast"
+	"go/printer"
 	"go/token"
 	"strings"
 
@@ -55,12 +58,14 @@ func checkBlock(pass *analysis.Pass, stmts []ast.Stmt) {
 		}
 
 		// The last LHS value must be "err" and any values before it must be blank identifiers (_)
+		lhsIdents := make([]*ast.Ident, 0, len(assignStmt.Lhs))
 		lhsNames := make([]string, 0, len(assignStmt.Lhs))
 		for _, lhs := range assignStmt.Lhs {
-			ident, ok := lhs.(*ast.Ident)
-			if !ok {
+			ident, isIdent := lhs.(*ast.Ident)
+			if !isIdent {
 				break
 			}
+			lhsIdents = append(lhsIdents, ident)
 			lhsNames = append(lhsNames, ident.Name)
 		}
 		if len(lhsNames) != len(assignStmt.Lhs) {
@@ -79,7 +84,7 @@ func checkBlock(pass *analysis.Pass, stmts []ast.Stmt) {
 		if !allBlankPrefix {
 			continue
 		}
-		errIdent := assignStmt.Lhs[len(assignStmt.Lhs)-1].(*ast.Ident)
+		errIdent := lhsIdents[len(lhsIdents)-1]
 
 		// Next statement must be `if err != nil`
 		ifStmt, ok := stmts[i+1].(*ast.IfStmt)
@@ -103,9 +108,27 @@ func checkBlock(pass *analysis.Pass, stmts []ast.Stmt) {
 			continue
 		}
 
-		pass.Reportf(assignStmt.Pos(),
-			"'%s' assignment should be combined with the following 'if err != nil' into a single 'if' init statement",
-			strings.Join(lhsNames, ", "))
+		// Suggest moving the assignment into the if statement's init clause: delete the
+		// assignment statement (and anything up to the `if`) and re-insert it before the condition
+		var fixes []analysis.SuggestedFix
+		var buf bytes.Buffer
+		if err := printer.Fprint(&buf, pass.Fset, assignStmt); err == nil {
+			fixes = []analysis.SuggestedFix{{
+				Message: "Combine the assignment with the 'if err != nil' into a single 'if' init statement",
+				TextEdits: []analysis.TextEdit{
+					{Pos: assignStmt.Pos(), End: ifStmt.Pos()},
+					{Pos: ifStmt.Cond.Pos(), End: ifStmt.Cond.Pos(), NewText: append(buf.Bytes(), []byte("; ")...)},
+				},
+			}}
+		}
+
+		pass.Report(analysis.Diagnostic{
+			Pos: assignStmt.Pos(),
+			Message: fmt.Sprintf(
+				"'%s' assignment should be combined with the following 'if err != nil' into a single 'if' init statement",
+				strings.Join(lhsNames, ", ")),
+			SuggestedFixes: fixes,
+		})
 	}
 }
 

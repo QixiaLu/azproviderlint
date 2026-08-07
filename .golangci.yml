@@ -75,6 +75,10 @@ linters:
         text: 'ST1003'
         linters:
           - staticcheck
+      # table-driven tests repeat literals ("./...", flag names) by nature; constants would hurt readability
+      - path: '_test\.go'
+        linters:
+          - goconst
 
   settings:
     errcheck:
