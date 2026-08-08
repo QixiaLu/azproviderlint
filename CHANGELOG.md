@@ -4,6 +4,8 @@ Initial release!
 
 - add rule `AZG001`: detect `_, err := SomeFunc()` followed by `if err != nil` that should be combined into a single `if` init statement
 - add rule `AZS001`: detect typed SDK model fields (tagged `tfschema`) using non-64-bit numeric types (`int`, `int16`, `int32`, `float32`) instead of `int64`/`float64` — resolves named types and aliases via the type checker
+- add rule `AZS002`: detect schema `Default` values whose type does not match the declared `Type` — resolves named constants via the type checker (ports tfproviderlint [#329](https://github.com/bflad/tfproviderlint/pull/329) S038 with direct constant-kind comparison)
+- add rule `AZS003`: detect optional/required `TypeList` blocks that allow empty blocks — every property optional with no default and no `AtLeastOneOf`/`ExactlyOneOf` constraint (ports tfproviderlint [#236](https://github.com/bflad/tfproviderlint/pull/236) XS003)
 - port the grep/sed based checks from terraform-provider-azurerm's `scripts/checks/` (`gradually-deprecated.sh`, `timeouts-check.sh`, `test-package-check.sh`) to AST-based rules:
   - `AZG002`: unclear `invalid format of ...` error messages
   - `AZR001`: `d.SetId(*ptr)` instead of a Resource ID Formatter/Parser's `id.ID()`
