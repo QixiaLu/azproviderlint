@@ -6,10 +6,12 @@ import (
 
 	AZG001 "github.com/katbyte/azproviderlint/checks/AZG/AZG001_combine_err_assignment_and_check"
 	AZG002 "github.com/katbyte/azproviderlint/checks/AZG/AZG002_error_should_describe_expected_format"
+	AZG003 "github.com/katbyte/azproviderlint/checks/AZG/AZG003_pointer_to_enum_conversion"
 )
 
 // Checks contains all AZG (general Go style & readability) analyzers.
 var Checks = []*analysis.Analyzer{
 	AZG001.Analyzer,
 	AZG002.Analyzer,
+	AZG003.Analyzer,
 }
