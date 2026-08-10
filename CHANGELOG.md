@@ -1,3 +1,7 @@
+## v0.2.0 (Unreleased)
+
+- add rule `AZG003`: detect `pointer.To(sdk.SomeEnum(v))` explicit go-azure-sdk enum conversions that should use the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper instead
+
 ## v0.1.0 (2026-08-07)
 
 Initial release!
