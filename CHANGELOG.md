@@ -1,3 +1,7 @@
+## v0.2.0 (Unreleased)
+
+- add rule `AZR007`: detect `pluginsdk.StateChangeConf` usage that should use a custom poller implementing `pollers.PollerType`
+
 ## v0.1.0 (2026-08-07)
 
 Initial release!
