@@ -51,7 +51,7 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		// Look for an assignment immediately followed by a matching if statement.
-		for i := 0; i < len(stmts)-1; i++ {
+		for i := range len(stmts) - 1 {
 			ifStmt, ok := stmts[i+1].(*ast.IfStmt)
 			if !ok {
 				continue
@@ -78,7 +78,7 @@ func run(pass *analysis.Pass) (any, error) {
 
 // zeroValueAssignment reports whether stmt is a `varName := <zero-value>` short declaration,
 // returning the assignment and the declared variable name when it matches.
-func zeroValueAssignment(pass *analysis.Pass, stmt ast.Stmt) (*ast.AssignStmt, string) {
+func zeroValueAssignment(pass *analysis.Pass, stmt ast.Stmt) (assign *ast.AssignStmt, varName string) {
 	assignStmt, ok := stmt.(*ast.AssignStmt)
 	if !ok || assignStmt.Tok != token.DEFINE {
 		return nil, ""
@@ -113,10 +113,10 @@ func isZeroValue(pass *analysis.Pass, expr ast.Expr) bool {
 			return !constant.BoolVal(tv.Value)
 		case constant.String:
 			return constant.StringVal(tv.Value) == ""
-		case constant.Int:
+		case constant.Int, constant.Float:
 			return constant.Sign(tv.Value) == 0
-		case constant.Float:
-			return constant.Sign(tv.Value) == 0
+		case constant.Unknown, constant.Complex:
+			return false
 		}
 	}
 
