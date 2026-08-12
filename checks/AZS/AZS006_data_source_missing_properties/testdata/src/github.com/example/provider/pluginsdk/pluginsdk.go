@@ -9,11 +9,12 @@ type Resource struct {
 
 // Schema is a minimal stand-in for the plugin SDK schema type.
 type Schema struct {
-	Type     int
-	Required bool
-	Optional bool
-	Computed bool
-	Elem     interface{}
+	Type      int
+	Required  bool
+	Optional  bool
+	Computed  bool
+	WriteOnly bool
+	Elem      interface{}
 }
 
 const (

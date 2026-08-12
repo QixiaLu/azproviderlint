@@ -51,6 +51,7 @@ func resourceIncomplete() *pluginsdk.Resource {
 			"name":      {Type: pluginsdk.TypeString, Required: true},
 			"zone":      {Type: pluginsdk.TypeString, Optional: true},
 			"secret_wo": {Type: pluginsdk.TypeString, Optional: true},
+			"api_token": {Type: pluginsdk.TypeString, Optional: true, WriteOnly: true},
 			"backup": {
 				Type: pluginsdk.TypeList,
 				Elem: &pluginsdk.Resource{

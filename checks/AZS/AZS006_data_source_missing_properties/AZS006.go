@@ -238,7 +238,8 @@ func (c *collector) collectRegistrations(body *ast.BlockStmt) []entry {
 
 // treeNode is one level of a schema: property name -> the nested schema beneath it.
 type treeNode struct {
-	children map[string]*treeNode
+	children  map[string]*treeNode
+	writeOnly bool
 }
 
 func newTreeNode() *treeNode {
@@ -266,7 +267,7 @@ func (t *treeNode) allNames(out map[string]bool) {
 // parents are reported with their dotted path.
 func (t *treeNode) walkMissing(dsNames map[string]bool, prefix string, missing *[]string) {
 	for name, child := range t.children {
-		if isWriteOnly(name) {
+		if child.writeOnly || isWriteOnly(name) {
 			continue
 		}
 		path := name
@@ -368,6 +369,34 @@ func (b *treeBuilder) build(n ast.Node, node *treeNode) {
 	})
 }
 
+// hasWriteOnlyField reports whether a property's own schema literal sets `WriteOnly: true`.
+// Descent stops at nested schema maps, whose properties carry their own WriteOnly markers.
+func (b *treeBuilder) hasWriteOnlyField(expr ast.Expr) bool {
+	found := false
+	ast.Inspect(expr, func(n ast.Node) bool {
+		if found {
+			return false
+		}
+		if lit, ok := n.(*ast.CompositeLit); ok {
+			if m, ok := types.Unalias(b.c.pass.TypesInfo.TypeOf(lit)).(*types.Map); ok && isSchemaMap(m) {
+				return false
+			}
+		}
+		kv, ok := n.(*ast.KeyValueExpr)
+		if !ok {
+			return true
+		}
+		if id, isIdent := kv.Key.(*ast.Ident); isIdent && id.Name == "WriteOnly" {
+			if tv, hasType := b.c.pass.TypesInfo.Types[kv.Value]; hasType && tv.Value != nil && tv.Value.Kind() == constant.Bool && constant.BoolVal(tv.Value) {
+				found = true
+				return false
+			}
+		}
+		return true
+	})
+	return found
+}
+
 // collectMap adds a schema map literal's keys at the given level and walks each value one
 // level down, so nested Elem schemas become children rather than siblings.
 func (b *treeBuilder) collectMap(lit *ast.CompositeLit, node *treeNode) {
@@ -381,7 +410,11 @@ func (b *treeBuilder) collectMap(lit *ast.CompositeLit, node *treeNode) {
 			b.clean = false
 			continue
 		}
-		b.build(kv.Value, node.child(name))
+		child := node.child(name)
+		if b.hasWriteOnlyField(kv.Value) {
+			child.writeOnly = true
+		}
+		b.build(kv.Value, child)
 	}
 }
 
@@ -394,7 +427,7 @@ func isSchemaMap(m *types.Map) bool {
 	}
 
 	elem := types.Unalias(m.Elem())
-	if ptr, ok := elem.(*types.Pointer); ok {
+	if ptr, isPtr := elem.(*types.Pointer); isPtr {
 		elem = types.Unalias(ptr.Elem())
 	}
 	named, ok := elem.(*types.Named)
