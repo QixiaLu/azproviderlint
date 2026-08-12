@@ -1,3 +1,7 @@
+## Unreleased
+
+- add rule `AZS004`: detect `validation.StringInSlice` with a hand-written list of an SDK enum's values instead of the SDK's `PossibleValuesFor<Enum>()` helper — incomplete lists are reported with the missing values named, complete lists with a suggestion to switch to the helper; types only count as enums when their package exports a possible-values helper
+
 ## v0.1.0 (2026-08-07)
 
 Initial release!
