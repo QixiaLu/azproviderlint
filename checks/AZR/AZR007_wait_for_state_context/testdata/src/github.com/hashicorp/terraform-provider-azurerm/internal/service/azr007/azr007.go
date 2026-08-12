@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"example.com/pluginsdk"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 )
 
 // Should be flagged: pointer StateChangeConf composite literal.

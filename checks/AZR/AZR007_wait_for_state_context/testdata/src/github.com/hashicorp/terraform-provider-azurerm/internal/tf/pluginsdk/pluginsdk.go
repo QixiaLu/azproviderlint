@@ -1,4 +1,4 @@
-// Package pluginsdk is a minimal stand-in for the terraform-plugin-sdk helper/resource
+// Package pluginsdk is a minimal stand-in for the provider's internal/tf/pluginsdk helper
 // package used only by the AZR007 analysistest fixtures.
 package pluginsdk
 

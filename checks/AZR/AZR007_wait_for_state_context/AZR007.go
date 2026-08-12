@@ -4,11 +4,16 @@ package AZR007
 
 import (
 	"go/ast"
+	"go/types"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 )
+
+// pluginSDKPkgPath is the import path of the provider's pluginsdk helper package that declares
+// StateChangeConf.
+const pluginSDKPkgPath = "github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 
 // Analyzer checks for `pluginsdk.StateChangeConf{...}` composite literals. Going forward the
 // provider prefers custom pollers that implement the go-azure-sdk `pollers.PollerType`
@@ -41,6 +46,16 @@ func run(pass *analysis.Pass) (any, error) {
 
 		sel, ok := lit.Type.(*ast.SelectorExpr)
 		if !ok || sel.Sel.Name != "StateChangeConf" {
+			return
+		}
+
+		ident, ok := sel.X.(*ast.Ident)
+		if !ok || ident.Name != "pluginsdk" {
+			return
+		}
+
+		pkgName, ok := pass.TypesInfo.Uses[ident].(*types.PkgName)
+		if !ok || pkgName.Imported().Path() != pluginSDKPkgPath {
 			return
 		}
 
