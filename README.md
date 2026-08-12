@@ -97,6 +97,8 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 |------|-------------|
 | [AZG001](checks/AZG/AZG001_combine_err_assignment_and_check) | `err := SomeFunc()` or `_, err := SomeFunc()` followed by `if err != nil` should be combined into a single `if` init statement |
 | [AZG002](checks/AZG/AZG002_error_should_describe_expected_format) | Error messages should describe the expected format instead of saying `invalid format of ...` |
+| [AZG003](checks/AZG/AZG003_pointer_to_enum_conversion) | `pointer.To(sdk.SomeEnum(v))` explicit go-azure-sdk enum conversions must use the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper instead |
+| [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | `y := <zero>; if x != nil { y = *x }` zero-value initialization followed by a nil check and pointer dereference must use the generic `pointer.From(x)` helper instead |
 
 ### AZR — Resource Implementation
 
