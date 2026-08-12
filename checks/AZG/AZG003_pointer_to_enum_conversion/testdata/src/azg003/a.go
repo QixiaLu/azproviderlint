@@ -26,6 +26,59 @@ func validPlainInt() *int {
 	return pointer.To(42)
 }
 
+// Should NOT be flagged: a named slice conversion has a slice underlying type, not a basic type,
+// so it is out of scope (the slice equivalent is pointer.ToEnumSlice, not pointer.ToEnum).
+func validSliceConversion(in []string) *virtualmachines.OperatingSystemTypesList {
+	return pointer.To(virtualmachines.OperatingSystemTypesList(in))
+}
+
+// Should NOT be flagged: a slice literal is not a scalar enum conversion, so AZG003 ignores it.
+func validSliceLiteral() *[]virtualmachines.OperatingSystemTypes {
+	return pointer.To([]virtualmachines.OperatingSystemTypes{virtualmachines.OperatingSystemTypesLinux})
+}
+
+// Should NOT be flagged: DiskCount is an integer-underlying enum. pointer.ToEnum is constrained
+// to ~string, so recommending it here would not compile.
+func validIntegerEnum() *virtualmachines.DiskCount {
+	return pointer.To(virtualmachines.DiskCount(2))
+}
+
+// localStatus is a string enum declared in this package, not in go-azure-sdk. AZG003 only targets
+// SDK enums, so a conversion of a local named string type must never be flagged.
+type localStatus string
+
+// Should NOT be flagged: the converted type is local, not from go-azure-sdk.
+func validLocalStringEnum() *localStatus {
+	return pointer.To(localStatus("active"))
+}
+
+// Should NOT be flagged: ResourceIdentifier is a go-azure-sdk string type but not an enum (it has
+// no generated PossibleValuesFor helper), so it must not be treated as one.
+func validSDKNonEnumString() *virtualmachines.ResourceIdentifier {
+	return pointer.To(virtualmachines.ResourceIdentifier("/subscriptions/xxxx"))
+}
+
+// Should NOT be flagged: the value is already the enum type, so there is no explicit conversion
+// call for AZG003 to rewrite.
+func validNoConversion(os virtualmachines.OperatingSystemTypes) *virtualmachines.OperatingSystemTypes {
+	return pointer.To(os)
+}
+
+// Should be flagged with a string(...) hint: the converted value is itself a named string enum,
+// not a plain string. pointer.ToEnum takes a string parameter, so the suggestion must wrap the
+// value in string(...) to compile.
+func invalidEnumToEnum(os virtualmachines.OperatingSystemTypes) *virtualmachines.VirtualMachinePriorityTypes {
+	return pointer.To(virtualmachines.VirtualMachinePriorityTypes(os)) // want `pointer\.To with an explicit go-azure-sdk enum conversion should use pointer\.ToEnum\[VirtualMachinePriorityTypes\]\(string\(\.\.\.\)\) instead`
+}
+
+// osTypeAlias is a type alias to an SDK enum.
+type osTypeAlias = virtualmachines.OperatingSystemTypes
+
+// Should be flagged: the enum is referenced through a type alias.
+func invalidAliasedEnum() *virtualmachines.OperatingSystemTypes {
+	return pointer.To(osTypeAlias("Linux")) // want `pointer\.To with an explicit go-azure-sdk enum conversion should use pointer\.ToEnum\[OperatingSystemTypes\] instead`
+}
+
 // Should be flagged: pointer.To with an explicit enum conversion of a variable.
 func invalidPriority() *virtualmachines.VirtualMachinePriorityTypes {
 	priority := "Spot"

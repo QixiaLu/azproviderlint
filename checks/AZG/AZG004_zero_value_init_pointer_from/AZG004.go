@@ -57,8 +57,8 @@ func run(pass *analysis.Pass) (any, error) {
 				continue
 			}
 
-			assignStmt, varName := zeroValueAssignment(pass, stmts[i])
-			if assignStmt == nil {
+			assignPos, varName := zeroValueInit(pass, stmts[i])
+			if varName == "" {
 				continue
 			}
 
@@ -67,7 +67,7 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 
 			pass.Report(analysis.Diagnostic{
-				Pos:     assignStmt.Pos(),
+				Pos:     assignPos,
 				Message: "zero-value initialization followed by a nil check and pointer dereference can be simplified with pointer.From",
 			})
 		}
@@ -76,28 +76,59 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// zeroValueAssignment reports whether stmt is a `varName := <zero-value>` short declaration,
-// returning the assignment and the declared variable name when it matches.
-func zeroValueAssignment(pass *analysis.Pass, stmt ast.Stmt) (assign *ast.AssignStmt, varName string) {
-	assignStmt, ok := stmt.(*ast.AssignStmt)
-	if !ok || assignStmt.Tok != token.DEFINE {
-		return nil, ""
+// zeroValueInit reports whether stmt initialises a single variable to its zero value, returning
+// the initialization position and the variable name. It matches both the short-declaration form
+// (`varName := <zero>`) and the var-declaration form, covering all three of its variants:
+// `var varName T` (implicitly zero), `var varName T = <zero>`, and `var varName = <zero>`.
+func zeroValueInit(pass *analysis.Pass, stmt ast.Stmt) (pos token.Pos, varName string) {
+	switch s := stmt.(type) {
+	case *ast.AssignStmt:
+		if s.Tok != token.DEFINE || len(s.Lhs) != 1 || len(s.Rhs) != 1 {
+			return token.NoPos, ""
+		}
+
+		lhsIdent, ok := s.Lhs[0].(*ast.Ident)
+		if !ok {
+			return token.NoPos, ""
+		}
+
+		if !isZeroValue(pass, s.Rhs[0]) {
+			return token.NoPos, ""
+		}
+
+		return s.Pos(), lhsIdent.Name
+
+	case *ast.DeclStmt:
+		genDecl, ok := s.Decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.VAR || len(genDecl.Specs) != 1 {
+			return token.NoPos, ""
+		}
+
+		valueSpec, ok := genDecl.Specs[0].(*ast.ValueSpec)
+		if !ok || len(valueSpec.Names) != 1 {
+			return token.NoPos, ""
+		}
+
+		switch len(valueSpec.Values) {
+		case 0:
+			// `var varName T` with no initializer is implicitly the zero value; a type is
+			// required (`var varName` alone is not valid Go).
+			if valueSpec.Type == nil {
+				return token.NoPos, ""
+			}
+		case 1:
+			// `var varName T = <expr>` / `var varName = <expr>` must initialise to a zero value.
+			if !isZeroValue(pass, valueSpec.Values[0]) {
+				return token.NoPos, ""
+			}
+		default:
+			return token.NoPos, ""
+		}
+
+		return s.Pos(), valueSpec.Names[0].Name
 	}
 
-	if len(assignStmt.Lhs) != 1 || len(assignStmt.Rhs) != 1 {
-		return nil, ""
-	}
-
-	lhsIdent, ok := assignStmt.Lhs[0].(*ast.Ident)
-	if !ok {
-		return nil, ""
-	}
-
-	if !isZeroValue(pass, assignStmt.Rhs[0]) {
-		return nil, ""
-	}
-
-	return assignStmt, lhsIdent.Name
+	return token.NoPos, ""
 }
 
 // isZeroValue reports whether expr is a zero value: false, 0, "", or nil.
@@ -140,6 +171,9 @@ func matchingNilCheckAssignment(ifStmt *ast.IfStmt, varName string) bool {
 	}
 
 	checkedExpr := binExpr.X
+	if containsCallExpr(checkedExpr) {
+		return false
+	}
 
 	if len(ifStmt.Body.List) != 1 {
 		return false
@@ -164,7 +198,7 @@ func matchingNilCheckAssignment(ifStmt *ast.IfStmt, varName string) bool {
 		return false
 	}
 
-	return astExprEqual(checkedExpr, starExpr.X)
+	return types.ExprString(checkedExpr) == types.ExprString(starExpr.X)
 }
 
 // isNilIdent reports whether expr is the nil identifier.
@@ -173,8 +207,16 @@ func isNilIdent(expr ast.Expr) bool {
 	return ok && ident.Name == "nil"
 }
 
-// astExprEqual reports whether two expressions are structurally equal by comparing their
-// source rendering, which handles selectors such as props.Name.
-func astExprEqual(a, b ast.Expr) bool {
-	return types.ExprString(a) == types.ExprString(b)
+// containsCallExpr reports whether expr contains any function call, which would make the
+// pointer.From rewrite non-equivalent because the manual idiom evaluates the expression twice.
+func containsCallExpr(expr ast.Expr) bool {
+	found := false
+	ast.Inspect(expr, func(n ast.Node) bool {
+		if _, ok := n.(*ast.CallExpr); ok {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
 }

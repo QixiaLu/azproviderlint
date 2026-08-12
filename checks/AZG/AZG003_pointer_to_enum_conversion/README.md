@@ -2,7 +2,9 @@
 
 The AZG003 analyzer reports `pointer.To` calls that wrap an explicit [go-azure-sdk](https://github.com/hashicorp/go-azure-sdk) enum type conversion — `pointer.To(sdk.SomeEnum(v))` — where the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper from [go-azure-helpers](https://github.com/hashicorp/go-azure-helpers) should be used instead.
 
-`pointer.ToEnum` makes the intent explicit and keeps the enum type in one place, avoiding the redundant `sdk.SomeEnum(...)` conversion. The check only fires when the converted type is a go-azure-sdk enum: a named string/integer type declared in a `github.com/hashicorp/go-azure-sdk` package that either exposes the generated `PossibleValuesFor<Name>() []T` helper or is declared in a `constants.go` file. Plain `pointer.To` calls on strings, ints, or non-SDK types are left alone.
+`pointer.ToEnum` makes the intent explicit and keeps the enum type in one place, avoiding the redundant `sdk.SomeEnum(...)` conversion. The check only fires when the converted type is a go-azure-sdk enum: a named string type declared in a `github.com/hashicorp/go-azure-sdk` package that exposes the generated `PossibleValuesFor<Name>() []T` helper. Plain `pointer.To` calls on strings, ints, or non-SDK types are left alone.
+
+`pointer.ToEnum` has the signature `func ToEnum[T ~string](input string) *T`, so the rewrite `pointer.ToEnum[sdk.SomeEnum](v)` only compiles when the converted value `v` is assignable to `string`. When `v` is itself a named string type (for example another enum), the report notes that the value must be wrapped in an explicit `string(...)` conversion — e.g. `pointer.ToEnum[sdk.SomeEnum](string(v))` — for the suggestion to compile.
 
 ## Flagged Code
 

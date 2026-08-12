@@ -6,6 +6,7 @@ package AZG003
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"go/types"
 	"strings"
 
@@ -68,30 +69,48 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 
-		named, ok := pass.TypesInfo.TypeOf(argCall.Fun).(*types.Named)
-		if !ok || !isAzureSDKEnumType(pass, named) {
+		// Unalias before the *types.Named assertion so SDK enums referenced through a `=` alias
+		// (whose type is *types.Alias, not *types.Named) are still matched.
+		named, ok := types.Unalias(pass.TypesInfo.TypeOf(argCall.Fun)).(*types.Named)
+		if !ok || !isAzureSDKEnumType(named) {
 			return
+		}
+
+		message := fmt.Sprintf("pointer.To with an explicit go-azure-sdk enum conversion should use pointer.ToEnum[%s](...) instead", named.Obj().Name())
+		if !convertedValueIsString(pass, argCall.Args[0]) {
+			message = fmt.Sprintf("pointer.To with an explicit go-azure-sdk enum conversion should use pointer.ToEnum[%s](string(...)) instead", named.Obj().Name())
 		}
 
 		pass.Report(analysis.Diagnostic{
 			Pos:     call.Pos(),
-			Message: fmt.Sprintf("pointer.To with an explicit go-azure-sdk enum conversion should use pointer.ToEnum[%s] instead", named.Obj().Name()),
+			Message: message,
 		})
 	})
 
 	return nil, nil
 }
 
+// convertedValueIsString reports whether expr, the value being wrapped in an explicit enum
+// conversion, can be passed directly to pointer.ToEnum (whose parameter is string) without an
+// added string(...) conversion.
+func convertedValueIsString(pass *analysis.Pass, expr ast.Expr) bool {
+	if lit, ok := expr.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+		return true
+	}
+
+	return types.AssignableTo(types.Default(pass.TypesInfo.TypeOf(expr)), types.Typ[types.String])
+}
+
 // isAzureSDKEnumType reports whether named is a go-azure-sdk enum type: a named type with a
-// string or integer underlying type, declared in a go-azure-sdk package, that either exposes
-// the generated `PossibleValuesFor<Name>() []T` helper or is declared in a constants.go file.
-func isAzureSDKEnumType(pass *analysis.Pass, named *types.Named) bool {
+// string underlying type, declared in a go-azure-sdk package, that exposes the generated
+// `PossibleValuesFor<Name>() []T` helper.
+func isAzureSDKEnumType(named *types.Named) bool {
 	basic, ok := named.Underlying().(*types.Basic)
 	if !ok {
 		return false
 	}
 
-	if basic.Info()&(types.IsString|types.IsInteger) == 0 {
+	if basic.Info()&types.IsString == 0 {
 		return false
 	}
 
@@ -102,13 +121,7 @@ func isAzureSDKEnumType(pass *analysis.Pass, named *types.Named) bool {
 	}
 
 	// The generated SDK emits a PossibleValuesFor<TypeName>() []T helper for each enum.
-	lookup := pkg.Scope().Lookup("PossibleValuesFor" + obj.Name())
-	if lookup == nil {
-		// Fall back to the convention that enum types are declared in constants.go.
-		return strings.HasSuffix(pass.Fset.Position(obj.Pos()).Filename, "constants.go")
-	}
-
-	fn, ok := lookup.(*types.Func)
+	fn, ok := pkg.Scope().Lookup("PossibleValuesFor" + obj.Name()).(*types.Func)
 	if !ok {
 		return false
 	}

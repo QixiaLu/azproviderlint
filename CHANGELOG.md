@@ -2,7 +2,6 @@
 
 - add rule `AZG003`: detect `pointer.To(sdk.SomeEnum(v))` explicit go-azure-sdk enum conversions that should use the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper instead
 - add rule `AZG004`: detect zero-value initialization followed by a nil check and pointer dereference (`y := <zero>; if x != nil { y = *x }`) that should use the generic `pointer.From(x)` helper instead
-- add rule `AZG005`: detect `fmt.Errorf` calls with a fixed string and no format placeholders that should use `errors.New` instead
 
 ## v0.1.0 (2026-08-07)
 
