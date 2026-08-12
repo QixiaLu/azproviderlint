@@ -336,7 +336,7 @@ func resourceTypeOf(pass *analysis.Pass, elem ast.Expr) (string, bool) {
 }
 
 // resourceTypeMethod finds the `func (r TypeName) ResourceType() string` declaration for the
-// named receiver type in the package being analyzed.
+// named receiver type in the package being analysed.
 func resourceTypeMethod(pass *analysis.Pass, typeName string) *ast.FuncDecl {
 	for _, file := range pass.Files {
 		for _, decl := range file.Decls {
