@@ -5,7 +5,25 @@ import (
 	"github.com/example/provider/sdk"
 )
 
-type Registration struct{}
+type Registration struct {
+	autoRegistration autoRegistration
+}
+
+// autoRegistration mirrors azurerm's generated auto-registration: the wrapper methods above
+// delegate to these via an append spread, and the entries here must still be collected.
+type autoRegistration struct{}
+
+func (autoRegistration) Resources() []sdk.Resource {
+	return []sdk.Resource{
+		MissingAutoResource{}, // want `resource "azurerm_missing_auto" has no corresponding data source`
+	}
+}
+
+func (autoRegistration) DataSources() []sdk.DataSource {
+	return []sdk.DataSource{
+		CoveredAutoDataSource{},
+	}
+}
 
 func (r Registration) SupportedResources() map[string]*pluginsdk.Resource {
 	resources := map[string]*pluginsdk.Resource{
@@ -30,9 +48,11 @@ func (r Registration) SupportedDataSources() map[string]*pluginsdk.Resource {
 func (r Registration) Resources() []sdk.Resource {
 	out := []sdk.Resource{
 		CoveredTypedResource{},
+		CoveredAutoResource{},  // covered by the auto-registered data source
 		MissingTypedResource{}, // want `resource "azurerm_missing_typed" has no corresponding data source`
 		RunCommandResource{},   // action-style resource — never reported
 	}
+	out = append(out, r.autoRegistration.Resources()...)
 
 	if featureFlag() {
 		out = append(out, MissingAppendedResource{}) // want `resource "azurerm_missing_appended" has no corresponding data source`
@@ -42,10 +62,12 @@ func (r Registration) Resources() []sdk.Resource {
 }
 
 func (r Registration) DataSources() []sdk.DataSource {
-	return []sdk.DataSource{
+	dataSources := []sdk.DataSource{
 		CoveredTypedDataSource{},
 		CrossCoveredDataSource{},
 	}
+	dataSources = append(dataSources, r.autoRegistration.DataSources()...)
+	return dataSources
 }
 
 func (r Registration) FrameworkResources() []sdk.FrameworkWrappedResource {

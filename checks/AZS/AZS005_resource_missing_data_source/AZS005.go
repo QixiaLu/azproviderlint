@@ -221,6 +221,12 @@ func collectEntries(pass *analysis.Pass, body *ast.BlockStmt) ([]entry, bool) {
 			// out = append(out, FooResource{}) — conditional registration behind feature flags
 			if fun, ok := node.Fun.(*ast.Ident); ok && fun.Name == "append" && len(node.Args) > 1 {
 				for _, arg := range node.Args[1:] {
+					// append(out, r.autoRegistration.DataSources()...) — delegation to another
+					// registration method in the same package (generated auto-registration);
+					// its entries are collected when that method's declaration is visited
+					if delegatesToRegistrationMethod(pass, arg) {
+						continue
+					}
 					name, ok := resourceTypeOf(pass, arg)
 					add(name, arg.Pos(), ok)
 				}
@@ -233,14 +239,69 @@ func collectEntries(pass *analysis.Pass, body *ast.BlockStmt) ([]entry, bool) {
 	return entries, allResolved
 }
 
+// delegatesToRegistrationMethod reports whether expr is a call to another registration method
+// (`r.autoRegistration.DataSources()` etc.), whose entries are collected independently from
+// that method's own declaration in the package.
+func delegatesToRegistrationMethod(pass *analysis.Pass, expr ast.Expr) bool {
+	call, ok := ast.Unparen(expr).(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	name := sel.Sel.Name
+	if !resourceMethods[name] && !dataSourceMethods[name] {
+		return false
+	}
+	_, isFunc := pass.TypesInfo.ObjectOf(sel.Sel).(*types.Func)
+	return isFunc
+}
+
 // constantString resolves expr to a constant string via the type checker, so literals and
-// named constants both work.
+// named constants both work. As a fallback, a reference to a package-level `var` with a
+// constant string initializer (`var FooResourceName = "azurerm_foo"`) resolves to that
+// initializer, since some resources declare their type name that way for use with locks.
 func constantString(pass *analysis.Pass, expr ast.Expr) (string, bool) {
-	tv, ok := pass.TypesInfo.Types[expr]
-	if !ok || tv.Value == nil || tv.Value.Kind() != constant.String {
+	if tv, ok := pass.TypesInfo.Types[expr]; ok && tv.Value != nil && tv.Value.Kind() == constant.String {
+		return constant.StringVal(tv.Value), true
+	}
+
+	id, ok := ast.Unparen(expr).(*ast.Ident)
+	if !ok {
 		return "", false
 	}
-	return constant.StringVal(tv.Value), true
+	v, ok := pass.TypesInfo.ObjectOf(id).(*types.Var)
+	if !ok || v.Pkg() != pass.Pkg || v.Parent() != pass.Pkg.Scope() {
+		return "", false
+	}
+
+	for _, file := range pass.Files {
+		for _, decl := range file.Decls {
+			gen, ok := decl.(*ast.GenDecl)
+			if !ok || gen.Tok != token.VAR {
+				continue
+			}
+			for _, spec := range gen.Specs {
+				vs, ok := spec.(*ast.ValueSpec)
+				if !ok || len(vs.Names) != len(vs.Values) {
+					continue
+				}
+				for i, name := range vs.Names {
+					if name.Name != id.Name {
+						continue
+					}
+					if tv, ok := pass.TypesInfo.Types[vs.Values[i]]; ok && tv.Value != nil && tv.Value.Kind() == constant.String {
+						return constant.StringVal(tv.Value), true
+					}
+					return "", false
+				}
+			}
+		}
+	}
+
+	return "", false
 }
 
 // resourceTypeOf resolves a typed/framework registration element (`FooResource{}` or
