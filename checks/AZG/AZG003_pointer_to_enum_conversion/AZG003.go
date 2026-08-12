@@ -4,8 +4,10 @@
 package AZG003
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
+	"go/printer"
 	"go/token"
 	"go/types"
 	"strings"
@@ -76,18 +78,54 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 
+		valueIsString := convertedValueIsString(pass, argCall.Args[0])
+
 		message := fmt.Sprintf("pointer.To with an explicit go-azure-sdk enum conversion should use pointer.ToEnum[%s](...) instead", named.Obj().Name())
-		if !convertedValueIsString(pass, argCall.Args[0]) {
+		if !valueIsString {
 			message = fmt.Sprintf("pointer.To with an explicit go-azure-sdk enum conversion should use pointer.ToEnum[%s](string(...)) instead", named.Obj().Name())
 		}
 
 		pass.Report(analysis.Diagnostic{
-			Pos:     call.Pos(),
-			Message: message,
+			Pos:            call.Pos(),
+			Message:        message,
+			SuggestedFixes: suggestedFixes(pass, sel, argCall, valueIsString),
 		})
 	})
 
 	return nil, nil
+}
+
+// suggestedFixes rewrites `pointer.To(sdk.Enum(v))` into `pointer.ToEnum[sdk.Enum](v)`: the
+// `To` selector becomes `ToEnum[<type as written>]`, and the explicit conversion is replaced
+// by its bare argument — or, when the argument is not assignable to string, only the
+// conversion's type expression is replaced with `string`, turning `sdk.Enum(v)` into
+// `string(v)` in place.
+func suggestedFixes(pass *analysis.Pass, sel *ast.SelectorExpr, argCall *ast.CallExpr, valueIsString bool) []analysis.SuggestedFix {
+	var typeBuf bytes.Buffer
+	if err := printer.Fprint(&typeBuf, pass.Fset, argCall.Fun); err != nil {
+		return nil
+	}
+
+	edits := []analysis.TextEdit{{
+		Pos:     sel.Sel.Pos(),
+		End:     sel.Sel.End(),
+		NewText: []byte("ToEnum[" + typeBuf.String() + "]"),
+	}}
+
+	if valueIsString {
+		var argBuf bytes.Buffer
+		if err := printer.Fprint(&argBuf, pass.Fset, argCall.Args[0]); err != nil {
+			return nil
+		}
+		edits = append(edits, analysis.TextEdit{Pos: argCall.Pos(), End: argCall.End(), NewText: argBuf.Bytes()})
+	} else {
+		edits = append(edits, analysis.TextEdit{Pos: argCall.Fun.Pos(), End: argCall.Fun.End(), NewText: []byte("string")})
+	}
+
+	return []analysis.SuggestedFix{{
+		Message:   "Replace pointer.To with the explicit enum conversion by pointer.ToEnum",
+		TextEdits: edits,
+	}}
 }
 
 // convertedValueIsString reports whether expr, the value being wrapped in an explicit enum
