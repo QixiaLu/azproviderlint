@@ -1,3 +1,7 @@
+## Unreleased
+
+- add rule `AZS006`: detect data sources missing schema properties that exist on the same-named resource — pairs all registration flavours (untyped maps, typed `Arguments()`/`Attributes()`, framework `Schema()`), collects property names recursively through same-package schema helpers, and matches by name across the whole schema so restructured schemas under-report rather than false-positive; write-only (`_wo`) arguments are exempt
+
 ## v0.1.0 (2026-08-07)
 
 Initial release!
