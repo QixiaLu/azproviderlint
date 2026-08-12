@@ -1,3 +1,7 @@
+## Unreleased
+
+- add rule `AZS005`: detect registered resources with no data source of the same name — correlates untyped plugin SDK maps, typed SDK slices and framework wrapped slices (via `ResourceType()`), including feature-flagged conditional registration; action-style resources (`_run_command`, `_sas_token`) are exempt, and packages with unresolvable data source names are skipped to avoid false positives
+
 ## v0.1.0 (2026-08-07)
 
 Initial release!
