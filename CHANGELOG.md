@@ -1,7 +1,7 @@
 ## Unreleased
 
 - add rule `AZG003`: detect `pointer.To(sdk.SomeEnum(v))` explicit go-azure-sdk enum conversions that should use the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper — enums are recognised via the generated `PossibleValuesFor<Name>()` helper (string-backed only, aliases resolved), and conversions of non-string values get a `string(...)` hint in the message
-- add rule `AZG004`: detect zero-value initialization followed by a nil check and pointer dereference (`y := <zero>; if x != nil { y = *x }`) that should use the generic `pointer.From(x)` helper — covers both `:=` and `var` declarations, and skips function-call expressions where the rewrite would change evaluation
+- add rule `AZG004`: detect zero-value initialization followed by a nil check and pointer dereference (`y := <zero>; if x != nil { y = *x }`) that should use the generic `pointer.From(x)` helper — covers both `:=` and `var` declarations, and skips function-call expressions where the rewrite would change evaluation; reports carry a suggested fix applied via `-fix`, inserting the pointer import when missing
 
 ## v0.1.0 (2026-08-07)
 
