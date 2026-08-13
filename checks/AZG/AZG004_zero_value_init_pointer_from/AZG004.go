@@ -316,7 +316,7 @@ func pointerPkgRef(file *ast.File) (string, *analysis.TextEdit, bool) {
 	}
 
 	// not imported: insert into the first parenthesized import declaration. Import blocks are
-	// conventionally organized into gci-style sections (standard library, then side-effect
+	// conventionally organised into gci-style sections (standard library, then side-effect
 	// imports, then everything else), so the new import goes in sorted position among the
 	// existing non-stdlib imports only — never between standard-library ones — and opens a new
 	// section after the block's final import when the file has none. Layouts beyond that
