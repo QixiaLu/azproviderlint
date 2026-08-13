@@ -1,20 +1,9 @@
 // Package pluginsdk is a minimal stand-in for the provider's internal/tf/pluginsdk helper
-// package used only by the AZR007 analysistest fixtures.
+// package used only by the AZR007 analysistest fixtures. Just like azurerm's real wrapper,
+// StateChangeConf here is a type alias for retry.StateChangeConf rather than a distinct type.
 package pluginsdk
 
-import (
-	"context"
-	"time"
-)
+import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 
-// StateChangeConf is a minimal stand-in for pluginsdk.StateChangeConf.
-type StateChangeConf struct {
-	Pending []string
-	Target  []string
-	Timeout time.Duration
-}
-
-// WaitForStateContext is a stub matching the real helper's signature.
-func (c *StateChangeConf) WaitForStateContext(ctx context.Context) (interface{}, error) {
-	return nil, nil
-}
+// StateChangeConf aliases retry.StateChangeConf, mirroring azurerm's real pluginsdk wrapper.
+type StateChangeConf = retry.StateChangeConf

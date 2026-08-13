@@ -11,9 +11,10 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-// pluginSDKPkgPath is the import path of the provider's pluginsdk helper package that declares
-// StateChangeConf.
-const pluginSDKPkgPath = "github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
+// stateChangeConfPkgPath is the import path of the Plugin SDK helper package that actually
+// declares StateChangeConf. Provider wrappers such as azurerm's
+// `internal/tf/pluginsdk.StateChangeConf` are just type aliases for this type.
+const stateChangeConfPkgPath = "github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 
 // Analyzer checks for `pluginsdk.StateChangeConf{...}` composite literals. Going forward the
 // provider prefers custom pollers that implement the go-azure-sdk `pollers.PollerType`
@@ -40,22 +41,24 @@ func run(pass *analysis.Pass) (any, error) {
 
 	insp.Preorder(nodeFilter, func(n ast.Node) {
 		lit, ok := n.(*ast.CompositeLit)
+		if !ok || lit.Type == nil {
+			return
+		}
+
+		// Resolve the literal's type, unwrapping any alias so that provider wrappers such as
+		// azurerm's `pluginsdk.StateChangeConf` (an alias for `retry.StateChangeConf`) resolve
+		// to the same underlying named type as a direct `retry.StateChangeConf` usage.
+		named, ok := types.Unalias(pass.TypesInfo.TypeOf(lit.Type)).(*types.Named)
 		if !ok {
 			return
 		}
 
-		sel, ok := lit.Type.(*ast.SelectorExpr)
-		if !ok || sel.Sel.Name != "StateChangeConf" {
+		obj := named.Obj()
+		if obj.Name() != "StateChangeConf" {
 			return
 		}
 
-		ident, ok := sel.X.(*ast.Ident)
-		if !ok || ident.Name != "pluginsdk" {
-			return
-		}
-
-		pkgName, ok := pass.TypesInfo.Uses[ident].(*types.PkgName)
-		if !ok || pkgName.Imported().Path() != pluginSDKPkgPath {
+		if pkg := obj.Pkg(); pkg == nil || pkg.Path() != stateChangeConfPkgPath {
 			return
 		}
 
