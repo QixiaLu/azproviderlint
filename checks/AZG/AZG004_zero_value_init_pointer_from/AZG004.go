@@ -332,7 +332,12 @@ func pointerPkgRef(file *ast.File) (string, *analysis.TextEdit, bool) {
 				continue
 			}
 			if strings.Trim(imp.Path.Value, `"`) < pointerPkgPath {
+				// a trailing comment is not part of the spec's End; inserting between the two
+				// would re-attach the comment (e.g. a nolint directive) to the new import
 				insertAfter = imp.End()
+				if imp.Comment != nil {
+					insertAfter = imp.Comment.End()
+				}
 			}
 		}
 
@@ -340,6 +345,10 @@ func pointerPkgRef(file *ast.File) (string, *analysis.TextEdit, bool) {
 			return pointerPkgName, &analysis.TextEdit{Pos: insertAfter, End: insertAfter, NewText: []byte("\n\t" + newImport)}, true
 		}
 		first := gen.Specs[0].Pos()
+		// keep a doc comment attached to the spec it documents rather than the new import
+		if imp, ok := gen.Specs[0].(*ast.ImportSpec); ok && imp.Doc != nil {
+			first = imp.Doc.Pos()
+		}
 		return pointerPkgName, &analysis.TextEdit{Pos: first, End: first, NewText: []byte(newImport + "\n\t")}, true
 	}
 
