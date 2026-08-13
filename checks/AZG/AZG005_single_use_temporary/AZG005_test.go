@@ -1,4 +1,4 @@
-package AZG003
+package AZG005
 
 import (
 	"path/filepath"
@@ -8,11 +8,11 @@ import (
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
-func TestAZG003(t *testing.T) {
+func TestAZG005(t *testing.T) {
 	t.Parallel()
 
 	_, filename, _, _ := runtime.Caller(0)
 	dir := filepath.Join(filepath.Dir(filename), "testdata")
 
-	analysistest.RunWithSuggestedFixes(t, dir, Analyzer, "azg003")
+	analysistest.RunWithSuggestedFixes(t, dir, Analyzer, "azg005")
 }

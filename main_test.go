@@ -26,7 +26,7 @@ func TestExpandCategoryFlags(t *testing.T) {
 		{
 			name: "category flag expands to its rules",
 			args: []string{"azproviderlint", "-AZG", "./..."},
-			want: []string{"azproviderlint", "-AZG001", "-AZG002", "-AZG003", "-AZG004", "./..."},
+			want: []string{"azproviderlint", "-AZG001", "-AZG002", "-AZG003", "-AZG004", "-AZG005", "./..."},
 		},
 		{
 			name: "lowercase and double-dash accepted",
@@ -36,7 +36,7 @@ func TestExpandCategoryFlags(t *testing.T) {
 		{
 			name: "category and rule flags combine",
 			args: []string{"azproviderlint", "-AZG", "-AZR001", "./..."},
-			want: []string{"azproviderlint", "-AZG001", "-AZG002", "-AZG003", "-AZG004", "-AZR001", "./..."},
+			want: []string{"azproviderlint", "-AZG001", "-AZG002", "-AZG003", "-AZG004", "-AZG005", "-AZR001", "./..."},
 		},
 		{
 			name: "empty category is not expanded",

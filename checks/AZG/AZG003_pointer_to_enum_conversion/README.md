@@ -6,6 +6,8 @@ The AZG003 analyzer reports `pointer.To` calls that wrap an explicit [go-azure-s
 
 `pointer.ToEnum` has the signature `func ToEnum[T ~string](input string) *T`, so the rewrite `pointer.ToEnum[sdk.SomeEnum](v)` only compiles when the converted value `v` is assignable to `string`. When `v` is itself a named string type (for example another enum), the report notes that the value must be wrapped in an explicit `string(...)` conversion — e.g. `pointer.ToEnum[sdk.SomeEnum](string(v))` — for the suggestion to compile.
 
+The report carries a suggested fix, so `azproviderlint -AZG003 -fix` (or an editor applying the suggested fix) rewrites the call automatically — including the `string(...)` wrap when the converted value is not assignable to string.
+
 ## Flagged Code
 
 ```go
