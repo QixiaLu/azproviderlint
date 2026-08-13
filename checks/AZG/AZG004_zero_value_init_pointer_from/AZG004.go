@@ -4,10 +4,13 @@
 package AZG004
 
 import (
+	"bytes"
 	"go/ast"
 	"go/constant"
+	"go/printer"
 	"go/token"
 	"go/types"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -62,13 +65,15 @@ func run(pass *analysis.Pass) (any, error) {
 				continue
 			}
 
-			if !matchingNilCheckAssignment(ifStmt, varName) {
+			checkedExpr, ok := matchingNilCheckAssignment(ifStmt, varName)
+			if !ok {
 				continue
 			}
 
 			pass.Report(analysis.Diagnostic{
-				Pos:     assignPos,
-				Message: "zero-value initialization followed by a nil check and pointer dereference can be simplified with pointer.From",
+				Pos:            assignPos,
+				Message:        "zero-value initialization followed by a nil check and pointer dereference can be simplified with pointer.From",
+				SuggestedFixes: suggestedFixes(pass, stmts[i], ifStmt, varName, checkedExpr),
 			})
 		}
 	})
@@ -155,50 +160,51 @@ func isZeroValue(pass *analysis.Pass, expr ast.Expr) bool {
 }
 
 // matchingNilCheckAssignment reports whether ifStmt is `if x != nil { varName = *x }` with no
-// else branch, where the dereferenced expression matches the nil-checked one.
-func matchingNilCheckAssignment(ifStmt *ast.IfStmt, varName string) bool {
+// else branch, where the dereferenced expression matches the nil-checked one, returning the
+// nil-checked expression for use in the suggested fix.
+func matchingNilCheckAssignment(ifStmt *ast.IfStmt, varName string) (ast.Expr, bool) {
 	if ifStmt.Else != nil {
-		return false
+		return nil, false
 	}
 
 	binExpr, ok := ifStmt.Cond.(*ast.BinaryExpr)
 	if !ok || binExpr.Op != token.NEQ {
-		return false
+		return nil, false
 	}
 
 	if !isNilIdent(binExpr.Y) {
-		return false
+		return nil, false
 	}
 
 	checkedExpr := binExpr.X
 	if containsCallExpr(checkedExpr) {
-		return false
+		return nil, false
 	}
 
 	if len(ifStmt.Body.List) != 1 {
-		return false
+		return nil, false
 	}
 
 	assignStmt, ok := ifStmt.Body.List[0].(*ast.AssignStmt)
 	if !ok || assignStmt.Tok != token.ASSIGN {
-		return false
+		return nil, false
 	}
 
 	if len(assignStmt.Lhs) != 1 || len(assignStmt.Rhs) != 1 {
-		return false
+		return nil, false
 	}
 
 	lhsIdent, ok := assignStmt.Lhs[0].(*ast.Ident)
 	if !ok || lhsIdent.Name != varName {
-		return false
+		return nil, false
 	}
 
 	starExpr, ok := assignStmt.Rhs[0].(*ast.StarExpr)
 	if !ok {
-		return false
+		return nil, false
 	}
 
-	return types.ExprString(checkedExpr) == types.ExprString(starExpr.X)
+	return checkedExpr, types.ExprString(checkedExpr) == types.ExprString(starExpr.X)
 }
 
 // isNilIdent reports whether expr is the nil identifier.
@@ -219,4 +225,154 @@ func containsCallExpr(expr ast.Expr) bool {
 		return true
 	})
 	return found
+}
+
+const (
+	// pointerPkgPath is the import path of the go-azure-helpers pointer package.
+	pointerPkgPath = "github.com/hashicorp/go-azure-helpers/lang/pointer"
+	// pointerPkgName is the package's default reference name when imported without an alias.
+	pointerPkgName = "pointer"
+)
+
+// suggestedFixes replaces the zero-value initialization and the nil-check if statement with a
+// single `varName := <pkg>.From(x)` statement. The pointer package is referenced by whatever
+// name the file imports it under; when the file does not import it at all, an import edit is
+// added in sorted position inside the file's import block. Files with no parenthesized import
+// block (or a dot/blank import of the package) get no fix, only the diagnostic.
+func suggestedFixes(pass *analysis.Pass, initStmt ast.Stmt, ifStmt *ast.IfStmt, varName string, checkedExpr ast.Expr) []analysis.SuggestedFix {
+	file := enclosingFile(pass, initStmt.Pos())
+	if file == nil {
+		return nil
+	}
+
+	pkgName, importEdit, ok := pointerPkgRef(file)
+	if !ok {
+		return nil
+	}
+
+	// `if v := <expr>; v != nil { y = *v }` — v's scope ends with the if, so the rewrite must
+	// substitute the init's right-hand side. That is evaluation-equivalent (the init ran
+	// exactly once unconditionally, pointer.From(<expr>) evaluates it exactly once too). Any
+	// other init shape gets no fix.
+	fromExpr := checkedExpr
+	if ifStmt.Init != nil {
+		init, ok := ifStmt.Init.(*ast.AssignStmt)
+		if !ok || init.Tok != token.DEFINE || len(init.Lhs) != 1 || len(init.Rhs) != 1 {
+			return nil
+		}
+		lhs, lhsOk := init.Lhs[0].(*ast.Ident)
+		checked, checkedOk := checkedExpr.(*ast.Ident)
+		if !lhsOk || !checkedOk || lhs.Name != checked.Name {
+			return nil
+		}
+		fromExpr = init.Rhs[0]
+	}
+
+	var exprBuf bytes.Buffer
+	if err := printer.Fprint(&exprBuf, pass.Fset, fromExpr); err != nil {
+		return nil
+	}
+
+	edits := []analysis.TextEdit{
+		{Pos: initStmt.Pos(), End: ifStmt.Pos()},
+		{Pos: ifStmt.Pos(), End: ifStmt.End(), NewText: []byte(varName + " := " + pkgName + ".From(" + exprBuf.String() + ")")},
+	}
+	if importEdit != nil {
+		edits = append(edits, *importEdit)
+	}
+
+	return []analysis.SuggestedFix{{
+		Message:   "Replace the zero-value initialization and nil check with pointer.From",
+		TextEdits: edits,
+	}}
+}
+
+// enclosingFile returns the *ast.File containing pos.
+func enclosingFile(pass *analysis.Pass, pos token.Pos) *ast.File {
+	for _, file := range pass.Files {
+		if file.FileStart <= pos && pos < file.FileEnd {
+			return file
+		}
+	}
+	return nil
+}
+
+// pointerPkgRef returns the name the pointer package is (or would be) referenced by in file,
+// and, when the file does not yet import it, a TextEdit inserting the import in sorted
+// position within the file's import block.
+func pointerPkgRef(file *ast.File) (string, *analysis.TextEdit, bool) {
+	for _, imp := range file.Imports {
+		path := strings.Trim(imp.Path.Value, `"`)
+		if path != pointerPkgPath {
+			continue
+		}
+		if imp.Name == nil {
+			return pointerPkgName, nil, true
+		}
+		if imp.Name.Name == "." || imp.Name.Name == "_" {
+			return "", nil, false
+		}
+		return imp.Name.Name, nil, true
+	}
+
+	// not imported: insert into the first parenthesized import declaration. Import blocks are
+	// conventionally organised into gci-style sections (standard library, then side-effect
+	// imports, then everything else), so the new import goes in sorted position among the
+	// existing non-stdlib imports only — never between standard-library ones — and opens a new
+	// section after the block's final import when the file has none. Layouts beyond that
+	// remain gci's job.
+	for _, decl := range file.Decls {
+		gen, ok := decl.(*ast.GenDecl)
+		if !ok || gen.Tok != token.IMPORT || !gen.Lparen.IsValid() || len(gen.Specs) == 0 {
+			continue
+		}
+
+		newImport := `"` + pointerPkgPath + `"`
+		insertAfter := token.NoPos
+		var insertBefore *ast.ImportSpec
+		for _, spec := range gen.Specs {
+			imp, ok := spec.(*ast.ImportSpec)
+			if !ok {
+				continue
+			}
+			path := strings.Trim(imp.Path.Value, `"`)
+			if !strings.Contains(strings.SplitN(path, "/", 2)[0], ".") {
+				continue // standard library: a different section
+			}
+			if imp.Name != nil && imp.Name.Name == "_" {
+				continue // side-effect imports form their own section
+			}
+			if path < pointerPkgPath {
+				// a trailing comment is not part of the spec's End; inserting between the two
+				// would re-attach the comment (e.g. a nolint directive) to the new import
+				insertAfter = imp.End()
+				if imp.Comment != nil {
+					insertAfter = imp.Comment.End()
+				}
+			} else if insertBefore == nil {
+				insertBefore = imp
+			}
+		}
+
+		if insertAfter.IsValid() {
+			return pointerPkgName, &analysis.TextEdit{Pos: insertAfter, End: insertAfter, NewText: []byte("\n\t" + newImport)}, true
+		}
+		if insertBefore != nil {
+			first := insertBefore.Pos()
+			// keep a doc comment attached to the spec it documents rather than the new import
+			if insertBefore.Doc != nil {
+				first = insertBefore.Doc.Pos()
+			}
+			return pointerPkgName, &analysis.TextEdit{Pos: first, End: first, NewText: []byte(newImport + "\n\t")}, true
+		}
+
+		// only standard-library or side-effect imports: open a new section after the last one
+		end := gen.Specs[len(gen.Specs)-1].End()
+		if imp, ok := gen.Specs[len(gen.Specs)-1].(*ast.ImportSpec); ok && imp.Comment != nil {
+			end = imp.Comment.End()
+		}
+		return pointerPkgName, &analysis.TextEdit{Pos: end, End: end, NewText: []byte("\n\n\t" + newImport)}, true
+	}
+
+	return "", nil, false
 }

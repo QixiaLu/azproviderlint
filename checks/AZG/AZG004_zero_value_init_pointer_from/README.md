@@ -4,6 +4,8 @@ The AZG004 analyzer reports the manual `y := <zero>; if x != nil { y = *x }` idi
 
 `pointer.From` returns the dereferenced value, or the type's zero value when the pointer is nil, so the whole init-and-nil-check dance collapses to a single expression. The check only fires when the variable is initialized to a zero value (`false`, `0`, `""`, `nil`), the `if` has no `else` branch and a single `x != nil` condition, and its body is exactly one `y = *x` assignment whose dereferenced expression matches the nil-checked one. Both the short-declaration form (`y := <zero>`) and the var-declaration form (`var y T`, `var y T = <zero>`, `var y = <zero>`) are matched.
 
+The report carries a suggested fix, so `azproviderlint -AZG004 -fix` (or an editor applying the suggested fix) rewrites both statements into a single `y := pointer.From(x)` automatically — referencing the pointer package by whatever name the file imports it under, and inserting the import when the file lacks it — in sorted position among the file's non-standard-library imports, so gci-style import grouping is preserved.
+
 ## Flagged Code
 
 ```go
