@@ -9,6 +9,7 @@ import (
 	AZS003 "github.com/katbyte/azproviderlint/checks/AZS/AZS003_schema_allows_empty_block"
 	AZS004 "github.com/katbyte/azproviderlint/checks/AZS/AZS004_enum_validation_missing_values"
 	AZS005 "github.com/katbyte/azproviderlint/checks/AZS/AZS005_resource_missing_data_source"
+	AZS006 "github.com/katbyte/azproviderlint/checks/AZS/AZS006_data_source_missing_properties"
 )
 
 // Checks contains all AZS (schema & typed SDK model) analyzers.
@@ -18,4 +19,5 @@ var Checks = []*analysis.Analyzer{
 	AZS003.Analyzer,
 	AZS004.Analyzer,
 	AZS005.Analyzer,
+	AZS006.Analyzer,
 }
