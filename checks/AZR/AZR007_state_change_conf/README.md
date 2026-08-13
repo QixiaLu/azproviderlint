@@ -1,6 +1,6 @@
 # AZR007
 
-The AZR007 analyzer reports use of `pluginsdk.StateChangeConf{...}`. Going forward the provider prefers custom pollers that implement the [go-azure-sdk](https://github.com/hashicorp/go-azure-sdk) `pollers.PollerType` interface and are driven via `pollers.NewPoller(...).PollUntilDone(ctx)`.
+The AZR007 analyzer reports use of `StateChangeConf{...}`. Going forward the provider prefers custom pollers that implement the [go-azure-sdk](https://github.com/hashicorp/go-azure-sdk) `pollers.PollerType` interface and are driven via `pollers.NewPoller(...).PollUntilDone(ctx)`.
 
 The check matches by resolving the composite literal's type to the underlying `StateChangeConf` declared in `github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry`. This catches every spelling — `pluginsdk.StateChangeConf{...}`, `retry.StateChangeConf{...}`, `resource.StateChangeConf{...}` — regardless of import alias. It matches whether the literal is taken by value or by pointer.
 

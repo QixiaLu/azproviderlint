@@ -1,4 +1,4 @@
-// Package AZR007 defines an analyzer that reports pluginsdk.StateChangeConf usage, which
+// Package AZR007 defines an analyzer that reports StateChangeConf usage, which
 // should be replaced with a custom poller implementing the pollers.PollerType interface.
 package AZR007
 
@@ -16,15 +16,15 @@ import (
 // `internal/tf/pluginsdk.StateChangeConf` are just type aliases for this type.
 const stateChangeConfPkgPath = "github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 
-// Analyzer checks for `pluginsdk.StateChangeConf{...}` composite literals. Going forward the
+// Analyzer checks for `StateChangeConf{...}` composite literals. Going forward the
 // provider prefers custom pollers that implement the go-azure-sdk `pollers.PollerType`
 // interface and are driven via `pollers.NewPoller(...).PollUntilDone(ctx)`.
 //
 // Reference: https://github.com/hashicorp/terraform-provider-azurerm/pull/30066
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZR007",
-	Doc:      "check for pluginsdk.StateChangeConf usage that should use a Custom Poller instead",
-	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR007_wait_for_state_context/README.md",
+	Doc:      "check for StateChangeConf usage that should use a Custom Poller instead",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR007_state_change_conf/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }
@@ -63,7 +63,7 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		pass.Reportf(lit.Pos(),
-			"prefer a Custom Poller over pluginsdk.StateChangeConf")
+			"prefer a Custom Poller over StateChangeConf")
 	})
 
 	return nil, nil
