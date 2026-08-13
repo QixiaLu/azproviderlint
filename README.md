@@ -97,6 +97,9 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 |------|-------------|
 | [AZG001](checks/AZG/AZG001_combine_err_assignment_and_check) | `err := SomeFunc()` or `_, err := SomeFunc()` followed by `if err != nil` should be combined into a single `if` init statement |
 | [AZG002](checks/AZG/AZG002_error_should_describe_expected_format) | Error messages should describe the expected format instead of saying `invalid format of ...` |
+| [AZG003](checks/AZG/AZG003_pointer_to_enum_conversion) | `pointer.To(sdk.SomeEnum(v))` explicit go-azure-sdk enum conversions must use the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper instead |
+| [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | `y := <zero>; if x != nil { y = *x }` zero-value initialization followed by a nil check and pointer dereference must use the generic `pointer.From(x)` helper instead |
+| [AZG005](checks/AZG/AZG005_single_use_temporary) | `x := <expr>` immediately followed by `y = x` or `return x`, with no other use of `x`, should be inlined into the consuming statement |
 
 ### AZR — Resource Implementation
 
@@ -123,6 +126,8 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 | [AZS001](checks/AZS/AZS001_typed_sdk_model_64bit_types) | Typed SDK model fields (tagged `tfschema`) must use 64-bit numeric types — `int64` not `int`/`int16`/`int32`, `float64` not `float32` — including slices, maps, pointers, named types, and aliases of them |
 | [AZS002](checks/AZS/AZS002_schema_default_type_mismatch) | Schema `Default` values must match the declared `Type` — a `bool` default on a `TypeInt` schema only fails at plan time; named constants are resolved via the type checker |
 | [AZS003](checks/AZS/AZS003_schema_allows_empty_block) | Optional/required `TypeList` blocks whose properties are all optional with no defaults allow `foo {}`, which can crash expand functions or cause spurious diffs — constrain with `AtLeastOneOf`/`ExactlyOneOf`, a `Required` property, or a `Default` |
+| [AZS004](checks/AZS/AZS004_enum_validation_missing_values) | `validation.StringInSlice` with a hand-written list of SDK enum values must use the SDK's `PossibleValuesFor<Enum>()` helper instead — partial lists reject valid API values, and even complete lists go stale when the SDK adds new ones |
+| [AZS005](checks/AZS/AZS005_resource_missing_data_source) | Registered resources must have a data source of the same name — checked across untyped plugin SDK maps, typed SDK slices and framework wrapped slices, including feature-flagged conditional registration |
 | [AZS006](checks/AZS/AZS006_data_source_missing_properties) | Data sources must expose the properties of their same-named resource — compares recursively collected schema property names per registration flavour (untyped maps, typed `Arguments()`/`Attributes()`, framework `Schema()`) and reports resource properties absent from the data source |
 
 ### AZC — Clients & SDK Usage

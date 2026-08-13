@@ -1,0 +1,202 @@
+package azg004
+
+import (
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
+)
+
+type Props struct {
+	Enabled *bool
+	Name    *string
+	Count   *int
+}
+
+// Should NOT be flagged: already uses pointer.From.
+func validFrom(props *Props) bool {
+	return pointer.From(props.Enabled)
+}
+
+// Should NOT be flagged: assigns the result of pointer.From to a local.
+func validFromLocal(props *Props) {
+	enabled := pointer.From(props.Enabled)
+	useBool(enabled)
+}
+
+// Should be flagged: zero-init bool followed by nil check + dereference.
+func invalidBool(props *Props) {
+	enabled := false // want `pointer\.From`
+	if props.Enabled != nil {
+		enabled = *props.Enabled
+	}
+	useBool(enabled)
+}
+
+// Should be flagged: zero-init string.
+func invalidString(props *Props) {
+	name := "" // want `pointer\.From`
+	if props.Name != nil {
+		name = *props.Name
+	}
+	useString(name)
+}
+
+// Should be flagged: zero-init int.
+func invalidInt(props *Props) {
+	count := 0 // want `pointer\.From`
+	if props.Count != nil {
+		count = *props.Count
+	}
+	useInt(count)
+}
+
+// Should be flagged: var form with an implicit zero value (`var enabled bool`).
+func invalidVarImplicitZero(props *Props) {
+	var enabled bool // want `pointer\.From`
+	if props.Enabled != nil {
+		enabled = *props.Enabled
+	}
+	useBool(enabled)
+}
+
+// Should be flagged: var form with an explicit zero value and a type (`var name string = ""`).
+func invalidVarExplicitZeroTyped(props *Props) {
+	var name string = "" // want `pointer\.From`
+	if props.Name != nil {
+		name = *props.Name
+	}
+	useString(name)
+}
+
+// Should be flagged: var form with an explicit zero value and no type (`var count = 0`).
+func invalidVarExplicitZeroUntyped(props *Props) {
+	var count = 0 // want `pointer\.From`
+	if props.Count != nil {
+		count = *props.Count
+	}
+	useInt(count)
+}
+
+// Should NOT be flagged: var form initialized to a non-zero value.
+func edgeVarNonZeroInit(props *Props) {
+	var enabled = true
+	if props.Enabled != nil {
+		enabled = *props.Enabled
+	}
+	useBool(enabled)
+}
+
+// Should NOT be flagged: has an else branch.
+func edgeElseBranch(props *Props) {
+	enabled := false
+	if props.Enabled != nil {
+		enabled = *props.Enabled
+	} else {
+		enabled = true
+	}
+	useBool(enabled)
+}
+
+// Should NOT be flagged: not initialized to a zero value.
+func edgeNonZeroInit(props *Props) {
+	enabled := true
+	if props.Enabled != nil {
+		enabled = *props.Enabled
+	}
+	useBool(enabled)
+}
+
+// Should NOT be flagged: the if body assigns a different variable.
+func edgeDifferentVar(props *Props) {
+	enabled := false
+	if props.Enabled != nil {
+		other := *props.Enabled
+		useBool(other)
+	}
+	useBool(enabled)
+}
+
+// Should NOT be flagged: the assignment and if are not adjacent.
+func edgeNotAdjacent(props *Props) {
+	enabled := false
+	doSomething()
+	if props.Enabled != nil {
+		enabled = *props.Enabled
+	}
+	useBool(enabled)
+}
+
+// Should NOT be flagged: the if body uses := instead of =, so it declares a new variable
+// rather than reassigning the zero-initialized one.
+func edgeShortDeclInBody(props *Props) {
+	enabled := false
+	if props.Enabled != nil {
+		enabled := *props.Enabled
+		useBool(enabled)
+	}
+	useBool(enabled)
+}
+
+// Should NOT be flagged: the nil-checked expression is a function call. pointer.From(getProps())
+// would call getProps once, whereas this idiom calls it twice, so the rewrite is not equivalent.
+func edgeCallExpr() {
+	enabled := false
+	if getProps() != nil {
+		enabled = *getProps()
+	}
+	useBool(enabled)
+}
+
+// Should be flagged: the pattern appears inside a switch case clause, not just a block body.
+func invalidInCaseClause(props *Props, kind int) {
+	switch kind {
+	case 1:
+		enabled := false // want `pointer\.From`
+		if props.Enabled != nil {
+			enabled = *props.Enabled
+		}
+		useBool(enabled)
+	}
+}
+
+// Should NOT be flagged: the dereferenced pointer differs from the nil-checked one, so the two
+// are not the same value and pointer.From would change behaviour.
+func edgeMismatchedPointer(props *Props, other *bool) {
+	enabled := false
+	if props.Enabled != nil {
+		enabled = *other
+	}
+	useBool(enabled)
+}
+
+// Should NOT be flagged: the condition uses == nil instead of != nil.
+func edgeEqNilCheck(props *Props) {
+	enabled := false
+	if props.Enabled == nil {
+		enabled = *props.Enabled
+	}
+	useBool(enabled)
+}
+
+// Should NOT be flagged: the if body assigns a non-dereference value.
+func edgeNonDerefAssign(props *Props) {
+	enabled := false
+	if props.Enabled != nil {
+		enabled = true
+	}
+	useBool(enabled)
+}
+
+// Should NOT be flagged: the if body has more than one statement.
+func edgeMultiStmtBody(props *Props) {
+	enabled := false
+	if props.Enabled != nil {
+		doSomething()
+		enabled = *props.Enabled
+	}
+	useBool(enabled)
+}
+
+func useBool(b bool)     {}
+func useString(s string) {}
+func useInt(i int)       {}
+func doSomething()       {}
+func getProps() *bool    { return nil }
