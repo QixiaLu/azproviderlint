@@ -315,9 +315,12 @@ func pointerPkgRef(file *ast.File) (string, *analysis.TextEdit, bool) {
 		return imp.Name.Name, nil, true
 	}
 
-	// not imported: insert into the first parenthesized import declaration, after the last
-	// existing import whose path sorts before ours (import order does not affect correctness,
-	// but staying sorted keeps goimports/gci happy in the common single-group layout)
+	// not imported: insert into the first parenthesized import declaration. Import blocks are
+	// conventionally organized into gci-style sections (standard library, then side-effect
+	// imports, then everything else), so the new import goes in sorted position among the
+	// existing non-stdlib imports only — never between standard-library ones — and opens a new
+	// section after the block's final import when the file has none. Layouts beyond that
+	// remain gci's job.
 	for _, decl := range file.Decls {
 		gen, ok := decl.(*ast.GenDecl)
 		if !ok || gen.Tok != token.IMPORT || !gen.Lparen.IsValid() || len(gen.Specs) == 0 {
@@ -326,30 +329,49 @@ func pointerPkgRef(file *ast.File) (string, *analysis.TextEdit, bool) {
 
 		newImport := `"` + pointerPkgPath + `"`
 		insertAfter := token.NoPos
+		var insertBefore *ast.ImportSpec
 		for _, spec := range gen.Specs {
 			imp, ok := spec.(*ast.ImportSpec)
 			if !ok {
 				continue
 			}
-			if strings.Trim(imp.Path.Value, `"`) < pointerPkgPath {
+			path := strings.Trim(imp.Path.Value, `"`)
+			if !strings.Contains(strings.SplitN(path, "/", 2)[0], ".") {
+				continue // standard library: a different section
+			}
+			if imp.Name != nil && imp.Name.Name == "_" {
+				continue // side-effect imports form their own section
+			}
+			if path < pointerPkgPath {
 				// a trailing comment is not part of the spec's End; inserting between the two
 				// would re-attach the comment (e.g. a nolint directive) to the new import
 				insertAfter = imp.End()
 				if imp.Comment != nil {
 					insertAfter = imp.Comment.End()
 				}
+			} else if insertBefore == nil {
+				insertBefore = imp
 			}
 		}
 
 		if insertAfter.IsValid() {
 			return pointerPkgName, &analysis.TextEdit{Pos: insertAfter, End: insertAfter, NewText: []byte("\n\t" + newImport)}, true
 		}
-		first := gen.Specs[0].Pos()
-		// keep a doc comment attached to the spec it documents rather than the new import
-		if imp, ok := gen.Specs[0].(*ast.ImportSpec); ok && imp.Doc != nil {
-			first = imp.Doc.Pos()
+		if insertBefore != nil {
+			first := insertBefore.Pos()
+			// keep a doc comment attached to the spec it documents rather than the new import
+			if insertBefore.Doc != nil {
+				first = insertBefore.Doc.Pos()
+			}
+			return pointerPkgName, &analysis.TextEdit{Pos: first, End: first, NewText: []byte(newImport + "\n\t")}, true
 		}
-		return pointerPkgName, &analysis.TextEdit{Pos: first, End: first, NewText: []byte(newImport + "\n\t")}, true
+
+		// only standard-library or side-effect imports: open a new section after the last one
+		end := gen.Specs[len(gen.Specs)-1].End()
+		if imp, ok := gen.Specs[len(gen.Specs)-1].(*ast.ImportSpec); ok && imp.Comment != nil {
+			end = imp.Comment.End()
+		}
+		return pointerPkgName, &analysis.TextEdit{Pos: end, End: end, NewText: []byte("\n\n\t" + newImport)}, true
 	}
 
 	return "", nil, false

@@ -2,6 +2,7 @@ package azg004
 
 import (
 	"bytes" // nolint: staticcheck
+
 	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 )
 

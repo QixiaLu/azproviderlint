@@ -1,8 +1,9 @@
 package azg004
 
 import (
-	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 	"strings"
+
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
 )
 
 type conf struct {
