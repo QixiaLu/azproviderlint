@@ -4,6 +4,8 @@ The AZR007 analyzer reports use of `StateChangeConf{...}`. Going forward the pro
 
 The check matches by resolving the composite literal's type to the underlying `StateChangeConf` declared in `github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry`. This catches every spelling — `pluginsdk.StateChangeConf{...}`, `retry.StateChangeConf{...}`, `resource.StateChangeConf{...}` — regardless of import alias. It matches whether the literal is taken by value or by pointer.
 
+Caveat: this check intentionally covers explicit `StateChangeConf{...}` composite literals only. Helper APIs such as `pluginsdk.Retry()` hide the `StateChangeConf` construction internally, so they are not reported by AZR007 even though they use the same deprecated retry machinery.
+
 Reference: [terraform-provider-azurerm#guide-new-resource](https://github.com/hashicorp/terraform-provider-azurerm/blob/main/contributing/topics/guide-new-resource.md)
 
 ## Flagged Code
