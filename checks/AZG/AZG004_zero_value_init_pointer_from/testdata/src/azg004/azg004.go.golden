@@ -23,55 +23,37 @@ func validFromLocal(props *Props) {
 
 // Should be flagged: zero-init bool followed by nil check + dereference.
 func invalidBool(props *Props) {
-	enabled := false // want `pointer\.From`
-	if props.Enabled != nil {
-		enabled = *props.Enabled
-	}
+	enabled := pointer.From(props.Enabled)
 	useBool(enabled)
 }
 
 // Should be flagged: zero-init string.
 func invalidString(props *Props) {
-	name := "" // want `pointer\.From`
-	if props.Name != nil {
-		name = *props.Name
-	}
+	name := pointer.From(props.Name)
 	useString(name)
 }
 
 // Should be flagged: zero-init int.
 func invalidInt(props *Props) {
-	count := 0 // want `pointer\.From`
-	if props.Count != nil {
-		count = *props.Count
-	}
+	count := pointer.From(props.Count)
 	useInt(count)
 }
 
 // Should be flagged: var form with an implicit zero value (`var enabled bool`).
 func invalidVarImplicitZero(props *Props) {
-	var enabled bool // want `pointer\.From`
-	if props.Enabled != nil {
-		enabled = *props.Enabled
-	}
+	enabled := pointer.From(props.Enabled)
 	useBool(enabled)
 }
 
 // Should be flagged: var form with an explicit zero value and a type (`var name string = ""`).
 func invalidVarExplicitZeroTyped(props *Props) {
-	var name string = "" // want `pointer\.From`
-	if props.Name != nil {
-		name = *props.Name
-	}
+	name := pointer.From(props.Name)
 	useString(name)
 }
 
 // Should be flagged: var form with an explicit zero value and no type (`var count = 0`).
 func invalidVarExplicitZeroUntyped(props *Props) {
-	var count = 0 // want `pointer\.From`
-	if props.Count != nil {
-		count = *props.Count
-	}
+	count := pointer.From(props.Count)
 	useInt(count)
 }
 
@@ -149,10 +131,7 @@ func edgeCallExpr() {
 func invalidInCaseClause(props *Props, kind int) {
 	switch kind {
 	case 1:
-		enabled := false // want `pointer\.From`
-		if props.Enabled != nil {
-			enabled = *props.Enabled
-		}
+		enabled := pointer.From(props.Enabled)
 		useBool(enabled)
 	}
 }
@@ -198,20 +177,14 @@ func edgeMultiStmtBody(props *Props) {
 // Should be flagged: the nil check binds the pointer in the if init; the fix substitutes the
 // init's right-hand side, which v's scope requires.
 func invalidIfInit(props *Props) {
-	var name string // want `pointer\.From`
-	if v := props.Name; v != nil {
-		name = *v
-	}
+	name := pointer.From(props.Name)
 	useString(name)
 }
 
 // Should be flagged: an if-init with a call is still evaluation-equivalent — the init ran the
 // call exactly once, and so does pointer.From.
 func invalidIfInitCall() {
-	enabled := false // want `pointer\.From`
-	if v := getProps(); v != nil {
-		enabled = *v
-	}
+	enabled := pointer.From(getProps())
 	useBool(enabled)
 }
 

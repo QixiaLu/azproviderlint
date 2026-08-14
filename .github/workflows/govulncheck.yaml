@@ -20,4 +20,7 @@ jobs:
     steps:
       - uses: golang/govulncheck-action@v1
         with:
+          # go-version-input defaults to 'stable', which overrides go-version-file entirely —
+          # blank it so the pinned .go-version is what actually gets scanned
+          go-version-input: ''
           go-version-file: ./.go-version
