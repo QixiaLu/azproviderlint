@@ -14,5 +14,5 @@ func TestAZG004(t *testing.T) {
 	_, filename, _, _ := runtime.Caller(0)
 	dir := filepath.Join(filepath.Dir(filename), "testdata")
 
-	analysistest.Run(t, dir, Analyzer, "azg004")
+	analysistest.RunWithSuggestedFixes(t, dir, Analyzer, "azg004")
 }

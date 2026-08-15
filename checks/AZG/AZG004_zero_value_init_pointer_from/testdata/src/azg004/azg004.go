@@ -195,6 +195,26 @@ func edgeMultiStmtBody(props *Props) {
 	useBool(enabled)
 }
 
+// Should be flagged: the nil check binds the pointer in the if init; the fix substitutes the
+// init's right-hand side, which v's scope requires.
+func invalidIfInit(props *Props) {
+	var name string // want `pointer\.From`
+	if v := props.Name; v != nil {
+		name = *v
+	}
+	useString(name)
+}
+
+// Should be flagged: an if-init with a call is still evaluation-equivalent — the init ran the
+// call exactly once, and so does pointer.From.
+func invalidIfInitCall() {
+	enabled := false // want `pointer\.From`
+	if v := getProps(); v != nil {
+		enabled = *v
+	}
+	useBool(enabled)
+}
+
 func useBool(b bool)     {}
 func useString(s string) {}
 func useInt(i int)       {}

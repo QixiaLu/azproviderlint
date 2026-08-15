@@ -1,0 +1,24 @@
+package azg004
+
+import (
+	helpers "github.com/hashicorp/go-azure-helpers/lang/pointer"
+)
+
+type settings struct {
+	Timeout *int
+}
+
+// Should NOT be flagged: already uses the aliased helper.
+func validAliasedFrom(s *settings) int {
+	return helpers.From(s.Timeout)
+}
+
+// Should be flagged: the pointer package is imported under an alias, and the suggested fix must
+// use that alias.
+func invalidAliasedImport(s *settings) {
+	timeout := 0 // want `pointer\.From`
+	if s.Timeout != nil {
+		timeout = *s.Timeout
+	}
+	useInt(timeout)
+}
