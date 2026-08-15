@@ -4,6 +4,8 @@ The AZT002 analyzer reports tests reading the provider's credentials from the en
 
 Test configurations should not reuse the credentials the test framework runs with. Instead, create a User Assigned Identity as part of the test configuration - with as minimal permissions as possible - which is then cleaned up with the rest of the test resources.
 
+Only `_test.go` files are checked: the provider runtime and the acceptance test framework legitimately read the credentials they authenticate with.
+
 ## Flagged Code
 
 ```go
