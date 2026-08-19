@@ -7,6 +7,7 @@ import (
 	"go/ast"
 	"go/constant"
 	"go/types"
+	"strconv"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -33,6 +34,22 @@ var Analyzer = &analysis.Analyzer{
 	Run:      run,
 }
 
+// The two allow flags suppress one reporting class each: lists that are a deliberate subset
+// of the enum (allow-missing-values) or a deliberate superset carrying legacy extras
+// (allow-extra-values). A list that is exactly the enum is always reported, since switching
+// to the helper is a pure win there.
+var (
+	allowMissingValues bool
+	allowExtraValues   bool
+)
+
+func init() {
+	Analyzer.Flags.BoolVar(&allowMissingValues, "allow-missing-values", false,
+		"do not report in-place validation arrays that are missing enum values (deliberate subsets)")
+	Analyzer.Flags.BoolVar(&allowExtraValues, "allow-extra-values", false,
+		"do not report in-place validation arrays containing values that are not part of the enum (deliberate supersets)")
+}
+
 func run(pass *analysis.Pass) (any, error) {
 	insp, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	if !ok {
@@ -57,6 +74,7 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		covered := map[string]bool{}
+		var coveredOrder []string
 		var enums []*types.Named
 		for _, elem := range lit.Elts {
 			tv, ok := pass.TypesInfo.Types[elem]
@@ -64,7 +82,10 @@ func run(pass *analysis.Pass) (any, error) {
 				// a non-constant element may contribute any value, so coverage is unprovable
 				return
 			}
-			covered[constant.StringVal(tv.Value)] = true
+			if v := constant.StringVal(tv.Value); !covered[v] {
+				covered[v] = true
+				coveredOrder = append(coveredOrder, v)
+			}
 			enums = appendEnumConstTypes(pass, enums, elem)
 		}
 
@@ -86,17 +107,44 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 		}
 
+		isValue := map[string]bool{}
+		for _, v := range values {
+			isValue[v.value] = true
+		}
+		var extra []string
+		for _, v := range coveredOrder {
+			if !isValue[v] {
+				extra = append(extra, strconv.Quote(v))
+			}
+		}
+
 		pkgName := enum.Obj().Pkg().Name()
-		if len(missing) == 0 {
+		if len(missing) == 0 && len(extra) == 0 {
 			pass.Reportf(lit.Pos(),
 				"enum validation for %s.%s lists every value manually; use %s.%s() so new values are picked up automatically",
 				pkgName, enum.Obj().Name(), pkgName, helper)
 			return
 		}
 
+		var clauses []string
+		if len(missing) > 0 && !allowMissingValues {
+			clauses = append(clauses, "is missing "+strings.Join(missing, ", "))
+		}
+		if len(extra) > 0 && !allowExtraValues {
+			clauses = append(clauses, "has extra values not in the enum: "+strings.Join(extra, ", "))
+		}
+		if len(clauses) == 0 {
+			return
+		}
+
+		advice := fmt.Sprintf("use %s.%s()", pkgName, helper)
+		if len(extra) > 0 {
+			// a plain swap to the helper would drop the extras, so the advice must keep them
+			advice += ", appending any deliberate extras"
+		}
 		pass.Reportf(lit.Pos(),
-			"enum validation for %s.%s is missing %s; use %s.%s()",
-			pkgName, enum.Obj().Name(), strings.Join(missing, ", "), pkgName, helper)
+			"enum validation for %s.%s %s; %s",
+			pkgName, enum.Obj().Name(), strings.Join(clauses, " and "), advice)
 	})
 
 	return nil, nil
