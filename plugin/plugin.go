@@ -15,17 +15,61 @@ func init() {
 	register.Plugin("azproviderlint", New)
 }
 
+// the two reserved settings keys; every other top-level key is a rule name
+const (
+	keyEnable  = "enable"
+	keyDisable = "disable"
+)
+
 // Settings allows rules to be enabled/disabled per-rule from .golangci.yml via
 // linters.settings.custom.azproviderlint.settings. An empty enable list means all rules.
+// Any other top-level key must be a rule name and sets that rule's analyzer flags:
+//
+//	settings:
+//	  enable: [AZS006]
+//	  AZS006:
+//	    ignore-sensitive: true
 type Settings struct {
 	Enable  []string `json:"enable"`
 	Disable []string `json:"disable"`
+	// Flags holds rule-specific analyzer flags, keyed by rule then flag name, collected from
+	// the settings' rule-name keys.
+	Flags map[string]map[string]string `json:"-"`
 }
 
 func New(settings any) (register.LinterPlugin, error) {
-	s, err := register.DecodeSettings[Settings](settings)
+	// the typed decode rejects unknown fields, so split the raw map first: the list fields
+	// decode into Settings, and every other key is a rule name carrying that rule's flags
+	raw, err := register.DecodeSettings[map[string]any](settings)
 	if err != nil {
 		return nil, err
+	}
+
+	lists := map[string]any{}
+	for _, key := range []string{keyEnable, keyDisable} {
+		if v, ok := raw[key]; ok {
+			lists[key] = v
+		}
+	}
+	s, err := register.DecodeSettings[Settings](lists)
+	if err != nil {
+		return nil, err
+	}
+
+	// flag values are stringified so YAML booleans and numbers work unquoted
+	s.Flags = map[string]map[string]string{}
+	for rule, v := range raw {
+		if rule == keyEnable || rule == keyDisable {
+			continue
+		}
+		flags, ok := v.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("azproviderlint setting %q: expected a map of flag values", rule)
+		}
+		s.Flags[rule] = map[string]string{}
+		for flag, value := range flags {
+			s.Flags[rule][flag] = fmt.Sprintf("%v", value)
+		}
 	}
 
 	return &Plugin{settings: s}, nil
@@ -45,6 +89,11 @@ func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 			return nil, fmt.Errorf("unknown azproviderlint rule %q in settings", name)
 		}
 	}
+	for name := range p.settings.Flags {
+		if !known[name] {
+			return nil, fmt.Errorf("unknown azproviderlint rule %q in settings", name)
+		}
+	}
 
 	analyzers := make([]*analysis.Analyzer, 0, len(checks.All))
 	for _, a := range checks.All {
@@ -53,6 +102,11 @@ func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		}
 		if slices.Contains(p.settings.Disable, a.Name) {
 			continue
+		}
+		for flag, value := range p.settings.Flags[a.Name] {
+			if err := a.Flags.Set(flag, value); err != nil {
+				return nil, fmt.Errorf("setting %s flag %q: %w", a.Name, flag, err)
+			}
 		}
 		analyzers = append(analyzers, a)
 	}

@@ -14,6 +14,7 @@ type Schema struct {
 	Optional  bool
 	Computed  bool
 	WriteOnly bool
+	Sensitive bool
 	Elem      interface{}
 }
 

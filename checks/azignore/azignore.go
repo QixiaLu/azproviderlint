@@ -26,7 +26,7 @@ func wrap(a *analysis.Analyzer) {
 	run := a.Run
 	name := a.Name
 	a.Run = func(pass *analysis.Pass) (any, error) {
-		ignored := ignoredLines(pass, name)
+		ignored := Lines(pass, name)
 		report := pass.Report
 		pass.Report = func(d analysis.Diagnostic) {
 			pos := pass.Fset.Position(d.Pos)
@@ -39,9 +39,12 @@ func wrap(a *analysis.Analyzer) {
 	}
 }
 
-// ignoredLines collects, per filename, the lines on which diagnostics from the named
-// analyzer are suppressed: the line of each matching directive and the line below it.
-func ignoredLines(pass *analysis.Pass, name string) map[string]map[int]bool {
+// Lines collects, per filename, the lines on which diagnostics from the named analyzer are
+// suppressed: the line of each matching directive and the line below it. It is exported so
+// checks whose reports aggregate several source positions (e.g. AZS006, which reports every
+// missing property on the data source's registration line) can honour directives placed on
+// the individual positions too.
+func Lines(pass *analysis.Pass, name string) map[string]map[int]bool {
 	ignored := map[string]map[int]bool{}
 
 	for _, file := range pass.Files {
