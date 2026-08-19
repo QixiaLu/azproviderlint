@@ -1,3 +1,7 @@
+## Unreleased
+
+- `AZS006` gains an `ignore-sensitive` flag exempting resource properties marked `Sensitive: true` (set via `-AZS006.ignore-sensitive` or a rule-name key in the plugin's golangci settings), and now honours `//azignore:AZS006` directives on individual resource schema properties so a single deliberately-unexposed property can be exempted without suppressing the whole data source
+
 ## v0.2.0 (2026-08-18)
 
 - `AZT002` now only checks `_test.go` files — the provider runtime (e.g. the AKS Workload Identity path) and the acceptance test framework legitimately read the credentials they authenticate with, and previously needed `//azignore:AZT002` suppressions

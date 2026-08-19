@@ -14,6 +14,7 @@ func (r Registration) SupportedResources() map[string]*pluginsdk.Resource {
 		"azurerm_via_helper":   resourceViaHelper(),
 		"azurerm_dynamic_keys": resourceDynamicKeys(),
 		"azurerm_no_ds":        resourceNoDataSource(),
+		"azurerm_secretive":    resourceSecretive(),
 	}
 }
 
@@ -23,6 +24,7 @@ func (r Registration) SupportedDataSources() map[string]*pluginsdk.Resource {
 		"azurerm_incomplete":   dataSourceIncomplete(), // want `data source "azurerm_incomplete" is missing resource properties: "backup.retention_days", "networking", "zone"`
 		"azurerm_via_helper":   dataSourceViaHelper(),
 		"azurerm_dynamic_keys": dataSourceDynamicKeys(),
+		"azurerm_secretive":    dataSourceSecretive(), // want `data source "azurerm_secretive" is missing resource properties: "primary_access_key"`
 	}
 }
 
