@@ -54,3 +54,33 @@ To ignore only this check on a line — leaving any other azproviderlint checks 
 ```go
 "azurerm_example": dataSourceExample(), //azignore:AZS006
 ```
+
+Both of the above suppress every report for that data source. To exempt a single property instead, place the `//azignore:AZS006` directive on that property in the **resource** schema — the property is then never required of the data source, while the rest of the schema is still checked:
+
+```go
+func resourceExample() *pluginsdk.Resource {
+	return &pluginsdk.Resource{
+		Schema: map[string]*pluginsdk.Schema{
+			"name": {Type: pluginsdk.TypeString, Required: true},
+			"customer_managed_key": { //azignore:AZS006 — deliberately not exposed in the data source
+				Type:      pluginsdk.TypeString,
+				Sensitive: true,
+			},
+		},
+	}
+}
+```
+
+## Flags
+
+`-AZS006.ignore-sensitive` exempts every resource property marked `Sensitive: true` (and, as always for a missing block, its nested properties) — for providers whose policy is to keep secrets out of data sources wholesale rather than suppressing them one by one. Via the golangci-lint plugin the flag is set through settings:
+
+```yaml
+linters:
+  settings:
+    custom:
+      azproviderlint:
+        settings:
+          AZS006:
+            ignore-sensitive: true
+```

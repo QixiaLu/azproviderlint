@@ -16,6 +16,8 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+
+	"github.com/katbyte/azproviderlint/checks/azignore"
 )
 
 // Analyzer pairs every registered data source with the same-named registered resource and
@@ -39,6 +41,16 @@ var Analyzer = &analysis.Analyzer{
 	Run:      run,
 }
 
+// ignoreSensitive drops resource properties marked `Sensitive: true` from the comparison.
+// Some providers deliberately keep secrets out of data sources, where values land in state
+// readable by anyone with state access; the flag makes that policy checkable.
+var ignoreSensitive bool
+
+func init() {
+	Analyzer.Flags.BoolVar(&ignoreSensitive, "ignore-sensitive", false,
+		"do not report resource properties marked Sensitive: true")
+}
+
 var (
 	resourceMethods   = map[string]bool{"SupportedResources": true, "Resources": true, "FrameworkResources": true}
 	dataSourceMethods = map[string]bool{"SupportedDataSources": true, "DataSources": true, "FrameworkDataSources": true}
@@ -58,6 +70,13 @@ type collector struct {
 	pass    *analysis.Pass
 	decls   map[types.Object]*ast.FuncDecl
 	methods map[string]map[string]*ast.FuncDecl // receiver type name -> method name -> decl
+	ignored map[string]map[int]bool             // filename -> lines carrying //azignore:AZS006
+}
+
+// ignoredAt reports whether pos falls on (or directly below) an //azignore:AZS006 directive.
+func (c *collector) ignoredAt(pos token.Pos) bool {
+	p := c.pass.Fset.Position(pos)
+	return c.ignored[p.Filename][p.Line]
 }
 
 func run(pass *analysis.Pass) (any, error) {
@@ -66,7 +85,7 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 
-	c := &collector{pass: pass, decls: map[types.Object]*ast.FuncDecl{}, methods: map[string]map[string]*ast.FuncDecl{}}
+	c := &collector{pass: pass, decls: map[types.Object]*ast.FuncDecl{}, methods: map[string]map[string]*ast.FuncDecl{}, ignored: azignore.Lines(pass, "AZS006")}
 	for _, file := range pass.Files {
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
@@ -132,8 +151,10 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 		reported[ds.name] = true
 
-		resTree, _ := c.schemaTree(res)
-		dsTree, dsClean := c.schemaTree(ds)
+		// per-property //azignore:AZS006 directives are honoured on the resource side only:
+		// an ignored resource property is simply never required of the data source
+		resTree, _ := c.schemaTree(res, true)
+		dsTree, dsClean := c.schemaTree(ds, false)
 		if len(resTree.children) == 0 || len(dsTree.children) == 0 || !dsClean {
 			continue
 		}
@@ -240,6 +261,7 @@ func (c *collector) collectRegistrations(body *ast.BlockStmt) []entry {
 type treeNode struct {
 	children  map[string]*treeNode
 	writeOnly bool
+	sensitive bool
 }
 
 func newTreeNode() *treeNode {
@@ -270,6 +292,9 @@ func (t *treeNode) walkMissing(dsNames map[string]bool, prefix string, missing *
 		if child.writeOnly || isWriteOnly(name) {
 			continue
 		}
+		if ignoreSensitive && child.sensitive {
+			continue
+		}
 		path := name
 		if prefix != "" {
 			path = prefix + "." + name
@@ -286,9 +311,9 @@ func (t *treeNode) walkMissing(dsNames map[string]bool, prefix string, missing *
 // encountered schema key was constant. Typed/framework entries use the type's
 // Arguments()+Attributes() methods when present, falling back to its Schema() method;
 // untyped entries follow the registration value expression into its function declaration.
-func (c *collector) schemaTree(e entry) (*treeNode, bool) {
+func (c *collector) schemaTree(e entry, honorIgnores bool) (*treeNode, bool) {
 	root := newTreeNode()
-	b := &treeBuilder{c: c, clean: true}
+	b := &treeBuilder{c: c, clean: true, honorIgnores: honorIgnores}
 
 	if e.typeName != "" {
 		methods := c.methods[e.typeName]
@@ -313,9 +338,10 @@ func (c *collector) schemaTree(e entry) (*treeNode, bool) {
 // treeBuilder builds property trees, tracking the call stack to guard against recursive
 // schema helpers and whether every key seen was constant.
 type treeBuilder struct {
-	c     *collector
-	stack []*ast.FuncDecl
-	clean bool
+	c            *collector
+	stack        []*ast.FuncDecl
+	clean        bool
+	honorIgnores bool
 }
 
 func (b *treeBuilder) onStack(fn *ast.FuncDecl) bool {
@@ -351,7 +377,17 @@ func (b *treeBuilder) build(n ast.Node, node *treeNode) {
 				}
 				handled = true
 				if name, ok := b.c.constantString(idx.Index); ok {
-					b.build(v.Rhs[i], node.child(name))
+					if b.honorIgnores && b.c.ignoredAt(idx.Index.Pos()) {
+						continue
+					}
+					child := node.child(name)
+					if b.hasBoolField(v.Rhs[i], "WriteOnly") {
+						child.writeOnly = true
+					}
+					if b.hasBoolField(v.Rhs[i], "Sensitive") {
+						child.sensitive = true
+					}
+					b.build(v.Rhs[i], child)
 				} else {
 					b.clean = false
 				}
@@ -369,9 +405,10 @@ func (b *treeBuilder) build(n ast.Node, node *treeNode) {
 	})
 }
 
-// hasWriteOnlyField reports whether a property's own schema literal sets `WriteOnly: true`.
-// Descent stops at nested schema maps, whose properties carry their own WriteOnly markers.
-func (b *treeBuilder) hasWriteOnlyField(expr ast.Expr) bool {
+// hasBoolField reports whether a property's own schema literal sets the named bool field to
+// true (e.g. `WriteOnly: true`, `Sensitive: true`). Descent stops at nested schema maps,
+// whose properties carry their own markers.
+func (b *treeBuilder) hasBoolField(expr ast.Expr, field string) bool {
 	found := false
 	ast.Inspect(expr, func(n ast.Node) bool {
 		if found {
@@ -386,7 +423,7 @@ func (b *treeBuilder) hasWriteOnlyField(expr ast.Expr) bool {
 		if !ok {
 			return true
 		}
-		if id, isIdent := kv.Key.(*ast.Ident); isIdent && id.Name == "WriteOnly" {
+		if id, isIdent := kv.Key.(*ast.Ident); isIdent && id.Name == field {
 			if tv, hasType := b.c.pass.TypesInfo.Types[kv.Value]; hasType && tv.Value != nil && tv.Value.Kind() == constant.Bool && constant.BoolVal(tv.Value) {
 				found = true
 				return false
@@ -410,9 +447,15 @@ func (b *treeBuilder) collectMap(lit *ast.CompositeLit, node *treeNode) {
 			b.clean = false
 			continue
 		}
+		if b.honorIgnores && b.c.ignoredAt(kv.Key.Pos()) {
+			continue
+		}
 		child := node.child(name)
-		if b.hasWriteOnlyField(kv.Value) {
+		if b.hasBoolField(kv.Value, "WriteOnly") {
 			child.writeOnly = true
+		}
+		if b.hasBoolField(kv.Value, "Sensitive") {
+			child.sensitive = true
 		}
 		b.build(kv.Value, child)
 	}

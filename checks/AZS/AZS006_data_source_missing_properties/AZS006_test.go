@@ -15,4 +15,11 @@ func TestAZS006(t *testing.T) {
 	dir := filepath.Join(filepath.Dir(filename), "testdata")
 
 	analysistest.Run(t, dir, Analyzer, "azs006")
+
+	// the ignore-sensitive flag is package state read during run, so the flag-on fixtures
+	// must run sequentially within the same test rather than as a parallel sibling
+	ignoreSensitive = true
+	defer func() { ignoreSensitive = false }()
+
+	analysistest.Run(t, dir, Analyzer, "azs006sensitive")
 }

@@ -142,7 +142,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 | Rule | Description |
 |------|-------------|
 | [AZT001](checks/AZT/AZT001_acceptance_test_external_package) | Acceptance test files (resource, data source, action, ephemeral — incl. list and generated variants) must use an external `_test` package to prevent circular dependencies |
-| [AZT002](checks/AZT/AZT002_credentials_from_environment) | Tests must not obtain credentials via `os.Getenv("ARM_CLIENT_ID"/"ARM_CLIENT_SECRET"/"ARM_CLIENT_SECRET_ALT")` — create an `azurerm_user_assigned_identity` with minimal permissions instead |
+| [AZT002](checks/AZT/AZT002_credentials_from_environment) | Tests (`_test.go` files only) must not obtain credentials via `os.Getenv("ARM_CLIENT_ID"/"ARM_CLIENT_SECRET"/"ARM_CLIENT_SECRET_ALT")` — create an `azurerm_user_assigned_identity` with minimal permissions instead |
 
 ### AZN — Naming Conventions
 
