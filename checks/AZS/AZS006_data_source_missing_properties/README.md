@@ -49,10 +49,10 @@ Some resource properties have no meaningful data source form (write-only credent
 "azurerm_example": dataSourceExample(), //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZS006` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZS006 - <reason>` comment instead, in the same positions:
 
 ```go
-"azurerm_example": dataSourceExample(), //azignore:AZS006
+"azurerm_example": dataSourceExample(), //azignore:AZS006 - <reason>
 ```
 
 Both of the above suppress every report for that data source. To exempt a single property instead, place the `//azignore:AZS006` directive on that property in the **resource** schema — the property is then never required of the data source, while the rest of the schema is still checked:

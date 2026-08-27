@@ -37,8 +37,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 clientId := os.Getenv("ARM_CLIENT_ID") //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZT002` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZT002 - <reason>` comment instead, in the same positions:
 
 ```go
-clientId := os.Getenv("ARM_CLIENT_ID") //azignore:AZT002
+clientId := os.Getenv("ARM_CLIENT_ID") //azignore:AZT002 - <reason>
 ```

@@ -34,8 +34,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 Capacity int `tfschema:"capacity"` //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZS001` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZS001 - <reason>` comment instead, in the same positions:
 
 ```go
-Capacity int `tfschema:"capacity"` //azignore:AZS001
+Capacity int `tfschema:"capacity"` //azignore:AZS001 - <reason>
 ```

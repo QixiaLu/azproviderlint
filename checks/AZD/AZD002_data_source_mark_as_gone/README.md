@@ -30,8 +30,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 return metadata.MarkAsGone(id) //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZD002` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZD002 - <reason>` comment instead, in the same positions:
 
 ```go
-return metadata.MarkAsGone(id) //azignore:AZD002
+return metadata.MarkAsGone(id) //azignore:AZD002 - <reason>
 ```

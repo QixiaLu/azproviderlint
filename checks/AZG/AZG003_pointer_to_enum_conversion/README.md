@@ -34,8 +34,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 return pointer.To(virtualmachines.OperatingSystemTypes("Linux")) //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZG003` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZG003 - <reason>` comment instead, in the same positions:
 
 ```go
-return pointer.To(virtualmachines.OperatingSystemTypes("Linux")) //azignore:AZG003
+return pointer.To(virtualmachines.OperatingSystemTypes("Linux")) //azignore:AZG003 - <reason>
 ```

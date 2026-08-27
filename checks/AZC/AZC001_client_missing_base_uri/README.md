@@ -26,8 +26,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 client := servers.NewServersClient(o.SubscriptionId) //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZC001` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZC001 - <reason>` comment instead, in the same positions:
 
 ```go
-client := servers.NewServersClient(o.SubscriptionId) //azignore:AZC001
+client := servers.NewServersClient(o.SubscriptionId) //azignore:AZC001 - <reason>
 ```
