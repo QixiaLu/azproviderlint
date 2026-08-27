@@ -35,7 +35,7 @@ if err := poller.PollUntilDone(ctx); err != nil {
 When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:
 
 ```go
-result, err := stateConf.WaitForStateContext(ctx) //nolint:azproviderlint
+stateConf := &pluginsdk.StateChangeConf{ //nolint:azproviderlint
 ```
 To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZR007` comment instead, in the same positions:
 

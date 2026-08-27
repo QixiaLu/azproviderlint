@@ -41,14 +41,12 @@ func run(pass *analysis.Pass) (any, error) {
 
 	insp.Preorder(nodeFilter, func(n ast.Node) {
 		lit, ok := n.(*ast.CompositeLit)
-		if !ok || lit.Type == nil {
+		if !ok {
 			return
 		}
 
-		// Resolve the literal's type, unwrapping any alias so that provider wrappers such as
-		// azurerm's `pluginsdk.StateChangeConf` (an alias for `retry.StateChangeConf`) resolve
-		// to the same underlying named type as a direct `retry.StateChangeConf` usage.
-		named, ok := types.Unalias(pass.TypesInfo.TypeOf(lit.Type)).(*types.Named)
+		// Unalias so provider aliases like `pluginsdk.StateChangeConf` resolve to `retry.StateChangeConf`.
+		named, ok := types.Unalias(pass.TypesInfo.TypeOf(lit)).(*types.Named)
 		if !ok {
 			return
 		}
