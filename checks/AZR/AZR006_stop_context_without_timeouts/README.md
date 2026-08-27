@@ -42,8 +42,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 ctx := meta.(*clients.Client).StopContext //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZR006` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZR006 - <reason>` comment instead, in the same positions:
 
 ```go
-ctx := meta.(*clients.Client).StopContext //azignore:AZR006
+ctx := meta.(*clients.Client).StopContext //azignore:AZR006 - <reason>
 ```

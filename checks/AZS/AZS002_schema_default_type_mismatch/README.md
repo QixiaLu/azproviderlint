@@ -34,8 +34,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 Default: true, //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZS002` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZS002 - <reason>` comment instead, in the same positions:
 
 ```go
-Default: true, //azignore:AZS002
+Default: true, //azignore:AZS002 - <reason>
 ```

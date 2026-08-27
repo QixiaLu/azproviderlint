@@ -31,8 +31,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 d.SetId("") //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZD001` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZD001 - <reason>` comment instead, in the same positions:
 
 ```go
-d.SetId("") //azignore:AZD001
+d.SetId("") //azignore:AZD001 - <reason>
 ```

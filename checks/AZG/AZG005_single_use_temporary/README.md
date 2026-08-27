@@ -36,8 +36,8 @@ A named temporary can be deliberate documentation of an otherwise opaque express
 format := pointer.From(input.Format) //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZG005` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZG005 - <reason>` comment instead, in the same positions:
 
 ```go
-format := pointer.From(input.Format) //azignore:AZG005
+format := pointer.From(input.Format) //azignore:AZG005 - <reason>
 ```

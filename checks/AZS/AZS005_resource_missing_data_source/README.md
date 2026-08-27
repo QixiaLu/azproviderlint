@@ -42,8 +42,8 @@ Not every resource needs a data source, so suppressions are expected — the che
 "azurerm_example": resourceExample(), //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZS005` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZS005 - <reason>` comment instead, in the same positions:
 
 ```go
-"azurerm_example": resourceExample(), //azignore:AZS005
+"azurerm_example": resourceExample(), //azignore:AZS005 - <reason>
 ```

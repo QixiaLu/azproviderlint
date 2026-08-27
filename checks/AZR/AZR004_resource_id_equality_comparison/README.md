@@ -28,8 +28,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 if subnetId.ID() == other.ID() { //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZR004` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZR004 - <reason>` comment instead, in the same positions:
 
 ```go
-if subnetId.ID() == other.ID() { //azignore:AZR004
+if subnetId.ID() == other.ID() { //azignore:AZR004 - <reason>
 ```

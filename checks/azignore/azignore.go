@@ -1,10 +1,14 @@
-// Package azignore implements '//azignore:AZX001' comment directives, letting individual
-// checks be suppressed per line without disabling every azproviderlint check on that line the
-// way '//nolint:azproviderlint' does. Directives work under any driver (golangci-lint plugin,
-// standalone binary or go vet) as filtering happens inside the analyzers themselves.
+// Package azignore implements '//azignore:AZX001 - reason' comment directives, letting
+// individual checks be suppressed per line without disabling every azproviderlint check on
+// that line the way '//nolint:azproviderlint' does. Directives work under any driver
+// (golangci-lint plugin, standalone binary or go vet) as filtering happens inside the
+// analyzers themselves. Directives are required to carry a reason — bare ones still
+// suppress, but are reported by the AZG000 check.
 package azignore
 
 import (
+	"regexp"
+	"slices"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -12,9 +16,40 @@ import (
 
 const prefix = "azignore:"
 
+// ruleList matches the directive's leading comma-separated rule names. Anchoring on the
+// rule-name shape (letters then digits, e.g. AZR001) is what lets the reason be free text
+// with no mandatory separator: the list ends at the first token that is not rule-shaped.
+var ruleList = regexp.MustCompile(`^[A-Za-z]+\d+(\s*,\s*[A-Za-z]+\d+)*`)
+
+// ParseDirective splits a comment's text into the azignore directive's rule names and
+// reason. ok is false when the comment is not an azignore directive at all. The reason is
+// everything after the rule list, less any leading '-'/'–'/'—' separator, which is
+// permitted but not required: 'azignore:AZR001 - deliberate' and 'azignore:AZR001
+// deliberate' parse the same. A directive without a reason returns ok true with an empty
+// reason — Lines still honours it (so a bad suppression never surfaces as a confusing
+// report from the suppressed check) and AZG000 reports the directive itself.
+func ParseDirective(text string) (rules []string, reason string, ok bool) {
+	body := strings.TrimSpace(strings.TrimPrefix(text, "//"))
+	if !strings.HasPrefix(body, prefix) {
+		return nil, "", false
+	}
+	body = strings.TrimSpace(strings.TrimPrefix(body, prefix))
+
+	list := ruleList.FindString(body)
+	for r := range strings.SplitSeq(list, ",") {
+		if r = strings.TrimSpace(r); r != "" {
+			rules = append(rules, r)
+		}
+	}
+
+	reason = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(body[len(list):]), ",-–—"))
+
+	return rules, reason, true
+}
+
 // Wrap replaces each analyzer's Run with one that drops diagnostics on lines carrying a
-// '//azignore:<Name>' comment, either at the end of the line or on the line immediately
-// preceding it. Multiple checks can be listed: '//azignore:AZG001,AZR001'.
+// '//azignore:<Name> - <reason>' comment, either at the end of the line or on the line
+// immediately preceding it. Multiple checks can be listed: '//azignore:AZG001,AZR001 - why'.
 func Wrap(analyzers []*analysis.Analyzer) []*analysis.Analyzer {
 	for _, a := range analyzers {
 		wrap(a)
@@ -50,19 +85,8 @@ func Lines(pass *analysis.Pass, name string) map[string]map[int]bool {
 	for _, file := range pass.Files {
 		for _, group := range file.Comments {
 			for _, comment := range group.List {
-				text := strings.TrimSpace(strings.TrimPrefix(comment.Text, "//"))
-				if !strings.HasPrefix(text, prefix) {
-					continue
-				}
-
-				matched := false
-				for n := range strings.SplitSeq(strings.TrimPrefix(text, prefix), ",") {
-					if strings.TrimSpace(n) == name {
-						matched = true
-						break
-					}
-				}
-				if !matched {
+				rules, _, ok := ParseDirective(comment.Text)
+				if !ok || !slices.Contains(rules, name) {
 					continue
 				}
 

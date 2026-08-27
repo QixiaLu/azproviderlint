@@ -95,6 +95,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 
 | Rule | Description |
 |------|-------------|
+| [AZG000](checks/AZG/AZG000_azignore_missing_reason) | `//azignore` directives must include a reason (`//azignore:AZR001 - <reason>`) documenting why the check does not apply — bare directives still suppress, but are themselves reported; disable this check to accept bare directives |
 | [AZG001](checks/AZG/AZG001_combine_err_assignment_and_check) | `err := SomeFunc()` or `_, err := SomeFunc()` followed by `if err != nil` should be combined into a single `if` init statement |
 | [AZG002](checks/AZG/AZG002_error_should_describe_expected_format) | Error messages should describe the expected format instead of saying `invalid format of ...` |
 | [AZG003](checks/AZG/AZG003_pointer_to_enum_conversion) | `pointer.To(sdk.SomeEnum(v))` explicit go-azure-sdk enum conversions must use the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper instead |
@@ -155,11 +156,13 @@ _No rules yet — reserved for missing/incorrect validation rules (e.g. string a
 
 When run via golangci-lint, all azproviderlint reports on a line can be ignored with a `//nolint:azproviderlint` comment at the end of the offending line or on the line immediately preceding it.
 
-To ignore a specific check — leaving the others active, and working under any driver including the standalone binary — use a `//azignore:<Rule>` comment in the same positions. Multiple rules can be listed separated by commas:
+To ignore a specific check — leaving the others active, and working under any driver including the standalone binary — use a `//azignore:<Rule> - <reason>` comment in the same positions. Multiple rules can be listed separated by commas, and the reason is free text after the rule list — the `-` separator (`–`/`—` also work) is optional:
 
 ```go
-d.SetId(*read.ID) //azignore:AZR001
+d.SetId(*read.ID) //azignore:AZR001 - legacy resource, ID formatter tracked in #1234
 
-//azignore:AZG001,AZR003
+//azignore:AZG001,AZR003 combined form obscures the retry loop here
 err := client.Delete(ctx, id)
 ```
+
+The reason is required: directives without one still suppress their target checks, but are themselves reported by [AZG000](checks/AZG/AZG000_azignore_missing_reason) (disable that check to drop the requirement).

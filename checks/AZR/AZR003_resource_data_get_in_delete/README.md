@@ -44,8 +44,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 name := d.Get("name").(string) //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZR003` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZR003 - <reason>` comment instead, in the same positions:
 
 ```go
-name := d.Get("name").(string) //azignore:AZR003
+name := d.Get("name").(string) //azignore:AZR003 - <reason>
 ```

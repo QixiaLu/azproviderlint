@@ -24,8 +24,8 @@ When run via golangci-lint, reports can be ignored with a `//nolint:azproviderli
 features.TreatUserSpecifiedSegmentsAsCaseInsensitive = true //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZR005` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZR005 - <reason>` comment instead, in the same positions:
 
 ```go
-features.TreatUserSpecifiedSegmentsAsCaseInsensitive = true //azignore:AZR005
+features.TreatUserSpecifiedSegmentsAsCaseInsensitive = true //azignore:AZR005 - <reason>
 ```

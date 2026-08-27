@@ -48,8 +48,8 @@ A deliberately unsupported subset of an enum is a legitimate reason to suppress 
 ValidateFunc: validation.StringInSlice([]string{ //nolint:azproviderlint
 ```
 
-To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZS004` comment instead, in the same positions:
+To ignore only this check on a line — leaving any other azproviderlint checks active — use a `//azignore:AZS004 - <reason>` comment instead, in the same positions:
 
 ```go
-ValidateFunc: validation.StringInSlice([]string{ //azignore:AZS004
+ValidateFunc: validation.StringInSlice([]string{ //azignore:AZS004 - <reason>
 ```
