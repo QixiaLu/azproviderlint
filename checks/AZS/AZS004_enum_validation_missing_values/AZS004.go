@@ -95,7 +95,7 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		enum := enums[0]
-		helper, values := enumValues(enum)
+		helper, typed, values := enumValues(enum)
 		if helper == "" {
 			return
 		}
@@ -119,10 +119,16 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		pkgName := enum.Obj().Pkg().Name()
+		helperExpr := fmt.Sprintf("%s.%s()", pkgName, helper)
+		if typed {
+			// track-1 style helpers return []Enum, which StringInSlice does not accept —
+			// go-azure-helpers' generic enum-slice conversion bridges the two
+			helperExpr = fmt.Sprintf("pointer.FromEnumSlice(pointer.To(%s))", helperExpr)
+		}
 		if len(missing) == 0 && len(extra) == 0 {
 			pass.Reportf(lit.Pos(),
-				"enum validation for %s.%s lists every value manually; use %s.%s() so new values are picked up automatically",
-				pkgName, enum.Obj().Name(), pkgName, helper)
+				"enum validation for %s.%s lists every value manually; use %s so new values are picked up automatically",
+				pkgName, enum.Obj().Name(), helperExpr)
 			return
 		}
 
@@ -137,7 +143,7 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 
-		advice := fmt.Sprintf("use %s.%s()", pkgName, helper)
+		advice := "use " + helperExpr
 		if len(extra) > 0 {
 			// a plain swap to the helper would drop the extras, so the advice must keep them
 			advice += ", appending any deliberate extras"
@@ -236,30 +242,49 @@ type enumValue struct {
 	value string
 }
 
-// enumValues returns the name of the possible-values helper for the enum and every constant of
-// the enum type declared in its package, in declaration-scope order. The helper's presence is
-// what marks the type as a closed enum: the generated go-azure-sdk packages emit
-// `PossibleValuesFor<Name>()` and the older track-1 style SDKs emit `Possible<Name>Values()`.
-// A named string type without either helper returns ("", nil) and is not treated as an enum.
-func enumValues(named *types.Named) (string, []enumValue) {
+// enumValues returns the name of the possible-values helper for the enum, whether it returns
+// a typed slice, and every constant of the enum type declared in its package, in
+// declaration-scope order. The helper's presence is what marks the type as a closed enum:
+// the generated go-azure-sdk packages emit `PossibleValuesFor<Name>() []string`, and the
+// older track-1 style SDKs emit `Possible<Name>Values() []<Name>` — the latter returns
+// typed true, since the helper cannot be passed to StringInSlice directly and the advice
+// must go through go-azure-helpers' enum-slice conversion. A named string type without a
+// qualifying helper returns ("", false, nil) and is not treated as an enum.
+func enumValues(named *types.Named) (helper string, typed bool, values []enumValue) {
 	obj := named.Obj()
 	pkg := obj.Pkg()
 	if pkg == nil {
-		return "", nil
+		return "", false, nil
 	}
 
-	var helper string
 	for _, candidate := range []string{"PossibleValuesFor" + obj.Name(), "Possible" + obj.Name() + "Values"} {
-		if _, ok := pkg.Scope().Lookup(candidate).(*types.Func); ok {
-			helper = candidate
-			break
+		fn, ok := pkg.Scope().Lookup(candidate).(*types.Func)
+		if !ok {
+			continue
 		}
+		sig, ok := fn.Type().(*types.Signature)
+		if !ok || sig.Params().Len() != 0 || sig.Results().Len() != 1 {
+			continue
+		}
+		slice, ok := sig.Results().At(0).Type().(*types.Slice)
+		if !ok {
+			continue
+		}
+		switch {
+		case types.Identical(slice.Elem(), types.Typ[types.String]):
+			typed = false
+		case types.Identical(types.Unalias(slice.Elem()), named):
+			typed = true
+		default:
+			continue
+		}
+		helper = candidate
+		break
 	}
 	if helper == "" {
-		return "", nil
+		return "", false, nil
 	}
 
-	var values []enumValue
 	for _, name := range pkg.Scope().Names() {
 		c, ok := pkg.Scope().Lookup(name).(*types.Const)
 		if !ok || !types.Identical(types.Unalias(c.Type()), named) {
@@ -268,5 +293,5 @@ func enumValues(named *types.Named) (string, []enumValue) {
 		values = append(values, enumValue{name: name, value: constant.StringVal(c.Val())})
 	}
 
-	return helper, values
+	return helper, typed, values
 }
