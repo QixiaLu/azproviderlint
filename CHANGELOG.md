@@ -1,4 +1,4 @@
-## Unreleased
+## v0.3.0 (2026-08-27)
 
 - `//azignore` directives now take a reason after the rule list (`//azignore:AZR001,AZR003 - deliberate subset`) — the `-` separator (`–`/`—` also work) is optional, and the rule list ends at the first token that is not rule-shaped so free-text reasons never confuse rule matching
 - add rule `AZG000`: report `//azignore` directives that lack a reason — bare directives still suppress their target checks so one problem produces one actionable message, and the check deliberately ignores `//azignore:AZG000` so a bare directive cannot suppress the report about itself; providers where bare directives are accepted policy can disable the check
