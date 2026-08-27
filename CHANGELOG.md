@@ -2,6 +2,7 @@
 
 - `AZS004` now also reports list values that are not part of the enum (typos or deliberate legacy extras), with advice to append deliberate extras to the helper's result — previously a superset list was misreported as "lists every value manually", where a plain helper swap would have dropped the extras; two new flags, `allow-missing-values` and `allow-extra-values`, suppress the subset and superset reporting classes for providers where those are policy
 - `AZS006` gains an `ignore-sensitive` flag exempting resource properties marked `Sensitive: true` (set via `-AZS006.ignore-sensitive` or a rule-name key in the plugin's golangci settings), and now honours `//azignore:AZS006` directives on individual resource schema properties so a single deliberately-unexposed property can be exempted without suppressing the whole data source
+- add rule `AZR007`: detect `StateChangeConf` composite literals from `github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry`, that should use a custom poller implementing `pollers.PollerType`
 
 ## v0.2.0 (2026-08-18)
 
