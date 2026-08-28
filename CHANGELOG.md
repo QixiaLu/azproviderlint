@@ -1,4 +1,4 @@
-## Unreleased
+## v0.3.1 (2026-08-28)
 
 - plugin settings: rule names are now matched case-insensitively — golangci's settings decoding (viper) lowercases YAML map keys, so a rule-name key like `AZS004: {allow-missing-values: true}` arrived as `azs004` and failed the whole lint run with `unknown azproviderlint rule "azs004"`; `enable`/`disable` list values (which viper does not lowercase) get the same treatment for consistency
 - `AZS004` now gives compilable advice for track-1 style enums whose possible-values helper returns a typed slice (`Possible<Enum>Values() []cdn.Transform`) — previously it advised passing the helper to `StringInSlice` directly, which does not compile for a `[]cdn.Transform`; the advice now routes through go-azure-helpers' generic conversion (`pointer.FromEnumSlice(pointer.To(cdn.PossibleTransformValues()))`), and helpers with any other signature disqualify the type from being treated as a closed enum
