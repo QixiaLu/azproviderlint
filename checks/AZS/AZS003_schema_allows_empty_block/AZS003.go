@@ -5,10 +5,10 @@ package AZS003
 
 import (
 	"go/ast"
-	"go/constant"
 	"go/token"
 	"go/types"
 
+	"github.com/katbyte/azproviderlint/helpers"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -58,7 +58,7 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		// computed-only blocks cannot be set in configuration
-		if !isTrueConstant(pass, fields["Optional"]) && !isTrueConstant(pass, fields["Required"]) {
+		if !helpers.IsTrueConstant(pass, fields["Optional"]) && !helpers.IsTrueConstant(pass, fields["Required"]) {
 			return
 		}
 
@@ -90,7 +90,7 @@ func run(pass *analysis.Pass) (any, error) {
 				return
 			}
 			propertyFields := compositeLitFields(property)
-			if isTrueConstant(pass, propertyFields["Required"]) ||
+			if helpers.IsTrueConstant(pass, propertyFields["Required"]) ||
 				isSet(propertyFields["Default"]) || isSet(propertyFields["DefaultFunc"]) ||
 				isSet(propertyFields["AtLeastOneOf"]) || isSet(propertyFields["ExactlyOneOf"]) {
 				return
@@ -132,14 +132,6 @@ func compositeLitFields(cl *ast.CompositeLit) map[string]ast.Expr {
 		}
 	}
 	return fields
-}
-
-func isTrueConstant(pass *analysis.Pass, e ast.Expr) bool {
-	if e == nil {
-		return false
-	}
-	value := pass.TypesInfo.Types[e].Value
-	return value != nil && value.Kind() == constant.Bool && constant.BoolVal(value)
 }
 
 // isSet reports whether the field is present and not literally nil.

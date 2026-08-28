@@ -9,8 +9,6 @@ import (
 )
 
 func TestAZS007(t *testing.T) {
-	t.Parallel()
-
 	_, filename, _, _ := runtime.Caller(0)
 	dir := filepath.Join(filepath.Dir(filename), "testdata")
 
@@ -18,10 +16,10 @@ func TestAZS007(t *testing.T) {
 }
 
 func TestAZS007_MigrationPackageSkipped(t *testing.T) {
-	t.Parallel()
-
 	_, filename, _, _ := runtime.Caller(0)
 	dir := filepath.Join(filepath.Dir(filename), "testdata")
+
+	excludePackages = "migration"
 
 	analysistest.Run(t, dir, Analyzer, "migration")
 }
