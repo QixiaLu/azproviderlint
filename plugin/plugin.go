@@ -4,6 +4,7 @@ package plugin
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/golangci/plugin-module-register/register"
 	"golang.org/x/tools/go/analysis"
@@ -80,30 +81,38 @@ type Plugin struct {
 }
 
 func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
+	// Rule names are matched case-insensitively throughout: golangci's settings decoding
+	// (viper) lowercases YAML map keys, so the rule-name keys carrying flag values arrive
+	// as "azs004" no matter how the config spells them.
 	known := make(map[string]bool, len(checks.All))
 	for _, a := range checks.All {
-		known[a.Name] = true
+		known[strings.ToLower(a.Name)] = true
 	}
 	for _, name := range slices.Concat(p.settings.Enable, p.settings.Disable) {
-		if !known[name] {
+		if !known[strings.ToLower(name)] {
 			return nil, fmt.Errorf("unknown azproviderlint rule %q in settings", name)
 		}
 	}
-	for name := range p.settings.Flags {
-		if !known[name] {
+	flags := make(map[string]map[string]string, len(p.settings.Flags))
+	for name, values := range p.settings.Flags {
+		if !known[strings.ToLower(name)] {
 			return nil, fmt.Errorf("unknown azproviderlint rule %q in settings", name)
 		}
+		flags[strings.ToLower(name)] = values
 	}
 
 	analyzers := make([]*analysis.Analyzer, 0, len(checks.All))
 	for _, a := range checks.All {
-		if len(p.settings.Enable) > 0 && !slices.Contains(p.settings.Enable, a.Name) {
+		listed := func(list []string) bool {
+			return slices.ContainsFunc(list, func(name string) bool { return strings.EqualFold(name, a.Name) })
+		}
+		if len(p.settings.Enable) > 0 && !listed(p.settings.Enable) {
 			continue
 		}
-		if slices.Contains(p.settings.Disable, a.Name) {
+		if listed(p.settings.Disable) {
 			continue
 		}
-		for flag, value := range p.settings.Flags[a.Name] {
+		for flag, value := range flags[strings.ToLower(a.Name)] {
 			if err := a.Flags.Set(flag, value); err != nil {
 				return nil, fmt.Errorf("setting %s flag %q: %w", a.Name, flag, err)
 			}

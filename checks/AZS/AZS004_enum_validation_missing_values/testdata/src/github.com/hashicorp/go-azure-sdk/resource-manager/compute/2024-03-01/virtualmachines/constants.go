@@ -42,3 +42,22 @@ const (
 	StorageTierHot  StorageTier = "Hot"
 	StorageTierCool StorageTier = "Cool"
 )
+
+// DiskCreateOptionTypes mimics a track-1 style enum: its possible-values helper returns a
+// typed slice rather than []string, so AZS004 must not treat it as a closed enum — the
+// "use the helper" advice would not compile inside StringInSlice.
+type DiskCreateOptionTypes string
+
+const (
+	DiskCreateOptionTypesAttach    DiskCreateOptionTypes = "Attach"
+	DiskCreateOptionTypesEmpty     DiskCreateOptionTypes = "Empty"
+	DiskCreateOptionTypesFromImage DiskCreateOptionTypes = "FromImage"
+)
+
+func PossibleDiskCreateOptionTypesValues() []DiskCreateOptionTypes {
+	return []DiskCreateOptionTypes{
+		DiskCreateOptionTypesAttach,
+		DiskCreateOptionTypesEmpty,
+		DiskCreateOptionTypesFromImage,
+	}
+}
