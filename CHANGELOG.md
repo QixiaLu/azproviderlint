@@ -1,4 +1,4 @@
-## Unreleased
+## v0.3.2 (2026-08-28)
 
 - `AZS004`: track-1 advice now suggests `validation.StringInEnumSlice(cdn.PossibleTransformValues(), false)` when the call's validation package exports a generic `StringInEnumSlice` wrapper ([azurerm#33246](https://github.com/hashicorp/terraform-provider-azurerm/pull/33246)); `pointer.FromEnumSlice(pointer.To(...))` remains the fallback
 
