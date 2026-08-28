@@ -1,36 +1,40 @@
+## Unreleased
+
+- `AZS004`: track-1 advice now suggests `validation.StringInEnumSlice(cdn.PossibleTransformValues(), false)` when the call's validation package exports a generic `StringInEnumSlice` wrapper ([azurerm#33246](https://github.com/hashicorp/terraform-provider-azurerm/pull/33246)); `pointer.FromEnumSlice(pointer.To(...))` remains the fallback
+
 ## v0.3.1 (2026-08-28)
 
-- plugin settings: rule names are now matched case-insensitively — golangci's settings decoding (viper) lowercases YAML map keys, so a rule-name key like `AZS004: {allow-missing-values: true}` arrived as `azs004` and failed the whole lint run with `unknown azproviderlint rule "azs004"`; `enable`/`disable` list values (which viper does not lowercase) get the same treatment for consistency
-- `AZS004` now gives compilable advice for track-1 style enums whose possible-values helper returns a typed slice (`Possible<Enum>Values() []cdn.Transform`) — previously it advised passing the helper to `StringInSlice` directly, which does not compile for a `[]cdn.Transform`; the advice now routes through go-azure-helpers' generic conversion (`pointer.FromEnumSlice(pointer.To(cdn.PossibleTransformValues()))`), and helpers with any other signature disqualify the type from being treated as a closed enum
+- plugin settings: rule names are matched case-insensitively (golangci's YAML decoding lowercases map keys)
+- `AZS004`: advice for track-1 enums (`Possible<Enum>Values() []Enum`) now compiles, via `pointer.FromEnumSlice(pointer.To(...))`
 
 ## v0.3.0 (2026-08-27)
 
-- `//azignore` directives now take a reason after the rule list (`//azignore:AZR001,AZR003 - deliberate subset`) — the `-` separator (`–`/`—` also work) is optional, and the rule list ends at the first token that is not rule-shaped so free-text reasons never confuse rule matching
-- add rule `AZG000`: report `//azignore` directives that lack a reason — bare directives still suppress their target checks so one problem produces one actionable message, and the check deliberately ignores `//azignore:AZG000` so a bare directive cannot suppress the report about itself; providers where bare directives are accepted policy can disable the check
-- `AZS004` now also reports list values that are not part of the enum (typos or deliberate legacy extras), with advice to append deliberate extras to the helper's result — previously a superset list was misreported as "lists every value manually", where a plain helper swap would have dropped the extras; two new flags, `allow-missing-values` and `allow-extra-values`, suppress the subset and superset reporting classes for providers where those are policy
-- `AZS006` gains an `ignore-sensitive` flag exempting resource properties marked `Sensitive: true` (set via `-AZS006.ignore-sensitive` or a rule-name key in the plugin's golangci settings), and now honours `//azignore:AZS006` directives on individual resource schema properties so a single deliberately-unexposed property can be exempted without suppressing the whole data source
-- add rule `AZR007`: detect `StateChangeConf` composite literals from `github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry`, that should use a custom poller implementing `pollers.PollerType`
+- `//azignore` directives now take an optional reason after the rule list (`//azignore:AZR001 - deliberate subset`)
+- add rule `AZG000`: report `//azignore` directives without a reason
+- `AZS004`: also report list values that are not part of the enum; new `allow-missing-values` and `allow-extra-values` flags
+- `AZS006`: new `ignore-sensitive` flag, and `//azignore:AZS006` now works on individual resource properties
+- add rule `AZR007`: `StateChangeConf` from the plugin SDK's `helper/retry` should be a custom poller implementing `pollers.PollerType`
 
 ## v0.2.0 (2026-08-18)
 
-- `AZT002` now only checks `_test.go` files — the provider runtime (e.g. the AKS Workload Identity path) and the acceptance test framework legitimately read the credentials they authenticate with, and previously needed `//azignore:AZT002` suppressions
-- add rule `AZG003`: detect `pointer.To(sdk.SomeEnum(v))` explicit go-azure-sdk enum conversions that should use the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper — enums are recognised via the generated `PossibleValuesFor<Name>()` helper (string-backed only, aliases resolved), and conversions of non-string values get a `string(...)` hint in the message; reports carry a suggested fix applied via `-fix`
-- add rule `AZG004`: detect zero-value initialization followed by a nil check and pointer dereference (`y := <zero>; if x != nil { y = *x }`) that should use the generic `pointer.From(x)` helper — covers both `:=` and `var` declarations, and skips function-call expressions where the rewrite would change evaluation; reports carry a suggested fix applied via `-fix`, inserting the pointer import when missing
-- add rule `AZG005`: detect single-use temporaries immediately consumed by the next statement (`x := <expr>` then `y = x` / `return x` with no other use of `x`) that should be inlined — call arguments are deliberately out of scope, and consumers whose left-hand side contains a call are skipped to preserve evaluation order; reports carry a suggested fix applied via `-fix`
-- add rule `AZS002`: detect schema `Default` values whose type does not match the declared `Type` — resolves named constants via the type checker (ports tfproviderlint [#329](https://github.com/bflad/tfproviderlint/pull/329) S038 with direct constant-kind comparison) — merged after the v0.1.0 tag was cut, so first released here
-- add rule `AZS003`: detect optional/required `TypeList` blocks that allow empty blocks — every property optional with no default and no `AtLeastOneOf`/`ExactlyOneOf` constraint (ports tfproviderlint [#236](https://github.com/bflad/tfproviderlint/pull/236) XS003) — merged after the v0.1.0 tag was cut, so first released here
-- add rule `AZS004`: detect `validation.StringInSlice` with a hand-written list of an SDK enum's values instead of the SDK's `PossibleValuesFor<Enum>()` helper — incomplete lists are reported with the missing values named, complete lists with a suggestion to switch to the helper; types only count as enums when their package exports a possible-values helper
-- add rule `AZS005`: detect registered resources with no data source of the same name — correlates untyped plugin SDK maps, typed SDK slices and framework wrapped slices (via `ResourceType()`), including feature-flagged conditional registration; action-style resources (`_run_command`, `_sas_token`) are exempt, and packages with unresolvable data source names are skipped to avoid false positives
-- add rule `AZS006`: detect data sources missing schema properties that exist on the same-named resource — pairs all registration flavours (untyped maps, typed `Arguments()`/`Attributes()`, framework `Schema()`), collects property names recursively through same-package schema helpers, and matches by name across the whole schema so restructured schemas under-report rather than false-positive; write-only arguments are exempt (`WriteOnly: true` field or `_wo` naming convention)
-- build and scan with Go 1.25.13 (fixes GO-2026-6218 in `net/url`); the govulncheck workflow now honours `.go-version` instead of silently scanning the latest stable toolchain
+- `AZT002` now only checks `_test.go` files
+- add rule `AZG003`: `pointer.To(sdk.SomeEnum(v))` should use the generic `pointer.ToEnum[sdk.SomeEnum](v)`; fixable with `-fix`
+- add rule `AZG004`: zero-value declaration plus nil-check dereference should use `pointer.From(x)`; fixable with `-fix`
+- add rule `AZG005`: single-use temporaries immediately consumed by the next statement should be inlined; fixable with `-fix`
+- add rule `AZS002`: schema `Default` values must match the declared `Type` (ports tfproviderlint [#329](https://github.com/bflad/tfproviderlint/pull/329) S038)
+- add rule `AZS003`: optional/required `TypeList` blocks must not allow empty blocks (ports tfproviderlint [#236](https://github.com/bflad/tfproviderlint/pull/236) XS003)
+- add rule `AZS004`: enum validation should use the SDK's `PossibleValuesFor<Enum>()` helper instead of a hand-written list
+- add rule `AZS005`: registered resources should have a data source of the same name
+- add rule `AZS006`: data sources should not be missing schema properties that exist on the same-named resource
+- build and scan with Go 1.25.13 (fixes GO-2026-6218); govulncheck honours `.go-version`
 
 ## v0.1.0 (2026-08-07)
 
 Initial release!
 
-- add rule `AZG001`: detect `_, err := SomeFunc()` followed by `if err != nil` that should be combined into a single `if` init statement
-- add rule `AZS001`: detect typed SDK model fields (tagged `tfschema`) using non-64-bit numeric types (`int`, `int16`, `int32`, `float32`) instead of `int64`/`float64` — resolves named types and aliases via the type checker
-- port the grep/sed based checks from terraform-provider-azurerm's `scripts/checks/` (`gradually-deprecated.sh`, `timeouts-check.sh`, `test-package-check.sh`) to AST-based rules:
+- add rule `AZG001`: `_, err := SomeFunc()` followed by `if err != nil` should be a single `if` init statement
+- add rule `AZS001`: typed SDK model numeric fields (tagged `tfschema`) must be `int64`/`float64`
+- port the grep/sed based checks from terraform-provider-azurerm's `scripts/checks/` to AST-based rules:
   - `AZG002`: unclear `invalid format of ...` error messages
   - `AZR001`: `d.SetId(*ptr)` instead of a Resource ID Formatter/Parser's `id.ID()`
   - `AZR002`: combined `CreateUpdate` methods instead of separate Create and Update

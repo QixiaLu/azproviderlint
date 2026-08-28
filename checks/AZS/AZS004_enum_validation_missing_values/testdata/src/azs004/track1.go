@@ -1,6 +1,7 @@
 package azs004
 
 import (
+	tfvalidation "github.com/example/provider/tf/validation"
 	"github.com/hashicorp/go-azure-sdk/resource-manager/compute/2024-03-01/virtualmachines"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
@@ -24,4 +25,19 @@ func invalidTrackOneCompleteList() {
 		string(virtualmachines.DiskCreateOptionTypesEmpty),
 		string(virtualmachines.DiskCreateOptionTypesFromImage),
 	}, false)
+}
+
+// Should be flagged: the wrapper package exports StringInEnumSlice, so the track-1 advice
+// names it instead of the go-azure-helpers conversion — echoing the call's ignoreCase
+// argument so the suggested replacement call is complete.
+func invalidTrackOneWithWrapperHelper() {
+	_ = tfvalidation.StringInSlice([]string{ // want `enum validation for virtualmachines\.DiskCreateOptionTypes is missing DiskCreateOptionTypesFromImage \("FromImage"\); use validation\.StringInEnumSlice\(virtualmachines\.PossibleDiskCreateOptionTypesValues\(\), true\)`
+		string(virtualmachines.DiskCreateOptionTypesAttach),
+		string(virtualmachines.DiskCreateOptionTypesEmpty),
+	}, true)
+}
+
+// Should NOT be flagged: already using the wrapper with the typed possible-values helper.
+func validTrackOneWrapperHelper() {
+	_ = tfvalidation.StringInEnumSlice(virtualmachines.PossibleDiskCreateOptionTypesValues(), false)
 }
