@@ -62,7 +62,11 @@ func run(pass *analysis.Pass) (any, error) {
 
 	insp.Preorder(nodeFilter, func(n ast.Node) {
 		call, ok := n.(*ast.CallExpr)
-		if !ok || !isStringInSliceCall(pass, call) {
+		if !ok {
+			return
+		}
+		validationPkg := stringInSliceValidationPkg(pass, call)
+		if validationPkg == nil {
 			return
 		}
 
@@ -121,9 +125,17 @@ func run(pass *analysis.Pass) (any, error) {
 		pkgName := enum.Obj().Pkg().Name()
 		helperExpr := fmt.Sprintf("%s.%s()", pkgName, helper)
 		if typed {
-			// track-1 style helpers return []Enum, which StringInSlice does not accept —
-			// go-azure-helpers' generic enum-slice conversion bridges the two
-			helperExpr = fmt.Sprintf("pointer.FromEnumSlice(pointer.To(%s))", helperExpr)
+			// track-1 style helpers return []Enum, which StringInSlice does not accept, so
+			// the advice must convert. When the matched validation package exports a generic
+			// enum-slice wrapper (func StringInEnumSlice[T ~string]([]T, bool), e.g. azurerm's
+			// internal/tf/validation), advise calling that directly; otherwise bridge with
+			// go-azure-helpers' generic enum-slice conversion.
+			if hasStringInEnumSlice(validationPkg) {
+				helperExpr = fmt.Sprintf("%s.StringInEnumSlice(%s, %s)",
+					validationPkg.Name(), helperExpr, types.ExprString(call.Args[1]))
+			} else {
+				helperExpr = fmt.Sprintf("pointer.FromEnumSlice(pointer.To(%s))", helperExpr)
+			}
 		}
 		if len(missing) == 0 && len(extra) == 0 {
 			pass.Reportf(lit.Pos(),
@@ -156,33 +168,67 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// isStringInSliceCall reports whether call resolves to a StringInSlice helper: a function
-// named StringInSlice with a ([]string, bool) parameter list, declared in a package whose
-// import path is or ends in "validation". This matches the plugin SDK's helper/validation
-// package and provider-internal wrappers of it (e.g. azurerm's internal/tf/validation)
-// without depending on what the wrapper package is called locally.
-func isStringInSliceCall(pass *analysis.Pass, call *ast.CallExpr) bool {
-	if len(call.Args) < 1 {
-		return false
+// stringInSliceValidationPkg returns the package declaring the StringInSlice helper the call
+// resolves to, or nil when the call is not one: a function named StringInSlice with a
+// ([]string, bool) parameter list, declared in a package whose import path is or ends in
+// "validation". This matches the plugin SDK's helper/validation package and provider-internal
+// wrappers of it (e.g. azurerm's internal/tf/validation) without depending on what the
+// wrapper package is called locally.
+func stringInSliceValidationPkg(pass *analysis.Pass, call *ast.CallExpr) *types.Package {
+	if len(call.Args) < 2 {
+		return nil
 	}
 
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
-		return false
+		return nil
 	}
 
 	obj := pass.TypesInfo.ObjectOf(sel.Sel)
 	if obj == nil || obj.Name() != "StringInSlice" {
-		return false
+		return nil
 	}
 
 	pkg := obj.Pkg()
 	if pkg == nil || (pkg.Path() != "validation" && !strings.HasSuffix(pkg.Path(), "/validation")) {
-		return false
+		return nil
 	}
 
 	sig, ok := obj.Type().(*types.Signature)
 	if !ok || sig.Params().Len() != 2 {
+		return nil
+	}
+
+	slice, ok := sig.Params().At(0).Type().(*types.Slice)
+	if !ok {
+		return nil
+	}
+
+	elem, ok := slice.Elem().(*types.Basic)
+	if !ok || elem.Kind() != types.String {
+		return nil
+	}
+
+	basic, ok := sig.Params().At(1).Type().(*types.Basic)
+	if !ok || basic.Kind() != types.Bool {
+		return nil
+	}
+
+	return pkg
+}
+
+// hasStringInEnumSlice reports whether the validation package exports a generic enum-slice
+// wrapper the typed-helper advice can name instead of the go-azure-helpers conversion:
+// a function StringInEnumSlice[T ~string](valid []T, ignoreCase bool) like the one azurerm's
+// internal/tf/validation gained alongside the track-1 call-site migration.
+func hasStringInEnumSlice(pkg *types.Package) bool {
+	fn, ok := pkg.Scope().Lookup("StringInEnumSlice").(*types.Func)
+	if !ok {
+		return false
+	}
+
+	sig, ok := fn.Type().(*types.Signature)
+	if !ok || sig.TypeParams().Len() != 1 || sig.Params().Len() != 2 {
 		return false
 	}
 
@@ -191,8 +237,7 @@ func isStringInSliceCall(pass *analysis.Pass, call *ast.CallExpr) bool {
 		return false
 	}
 
-	elem, ok := slice.Elem().(*types.Basic)
-	if !ok || elem.Kind() != types.String {
+	if _, ok := types.Unalias(slice.Elem()).(*types.TypeParam); !ok {
 		return false
 	}
 

@@ -1,3 +1,7 @@
+## Unreleased
+
+- `AZS004` track-1 advice now prefers a provider-local generic wrapper when the call's validation package exports one: `StringInEnumSlice[T ~string](valid []T, ignoreCase bool)` (added to azurerm's `internal/tf/validation` in hashicorp/terraform-provider-azurerm#33246) is advised as `validation.StringInEnumSlice(cdn.PossibleTransformValues(), false)` — echoing the call's ignoreCase argument — with the `pointer.FromEnumSlice(pointer.To(...))` conversion remaining the fallback for providers without the wrapper
+
 ## v0.3.1 (2026-08-28)
 
 - plugin settings: rule names are now matched case-insensitively — golangci's settings decoding (viper) lowercases YAML map keys, so a rule-name key like `AZS004: {allow-missing-values: true}` arrived as `azs004` and failed the whole lint run with `unknown azproviderlint rule "azs004"`; `enable`/`disable` list values (which viper does not lowercase) get the same treatment for consistency
