@@ -237,7 +237,7 @@ func hasStringInEnumSlice(pkg *types.Package) bool {
 		return false
 	}
 
-	if _, ok := types.Unalias(slice.Elem()).(*types.TypeParam); !ok {
+	if _, isTypeParam := types.Unalias(slice.Elem()).(*types.TypeParam); !isTypeParam {
 		return false
 	}
 
