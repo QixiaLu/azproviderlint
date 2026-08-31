@@ -101,6 +101,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 | [AZG003](checks/AZG/AZG003_pointer_to_enum_conversion) | `pointer.To(sdk.SomeEnum(v))` explicit go-azure-sdk enum conversions must use the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper instead |
 | [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | `y := <zero>; if x != nil { y = *x }` zero-value initialization followed by a nil check and pointer dereference must use the generic `pointer.From(x)` helper instead |
 | [AZG005](checks/AZG/AZG005_single_use_temporary) | `x := <expr>` immediately followed by `y = x` or `return x`, with no other use of `x`, should be inlined into the consuming statement |
+| [AZG007](checks/AZG/AZG007_redundant_nil_pointer_field) | Pointer fields in struct literals must not be explicitly set to `nil` (`Selector: nil`) — an omitted pointer field already defaults to `nil`; slices/maps/interfaces are left alone |
 
 ### AZR — Resource Implementation
 
