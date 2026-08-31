@@ -1,3 +1,7 @@
+## Unreleased
+
+- add rule `AZS007`: detect `registration.go` `Registration` method map keys and slice elements that are not sorted alphabetically — entries assigned to a local variable and then returned are followed to their composite literal definition, and sections separated by blank lines or comment lines are validated independently so grouped registrations keep their sections; reports carry a suggested fix applied via `-fix` that reorders each unsorted section, moving every entry's trailing comment with it
+
 ## v0.3.0 (2026-08-27)
 
 - `//azignore` directives now take a reason after the rule list (`//azignore:AZR001,AZR003 - deliberate subset`) — the `-` separator (`–`/`—` also work) is optional, and the rule list ends at the first token that is not rule-shaped so free-text reasons never confuse rule matching
