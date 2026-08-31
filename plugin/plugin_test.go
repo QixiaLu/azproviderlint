@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/katbyte/azproviderlint/checks"
@@ -122,5 +123,46 @@ func TestBuildAnalyzersRuleFlagErrors(t *testing.T) {
 	}
 	if _, err := buildAnalyzers(t, map[string]any{"AZS006": map[string]any{"no-such-flag": "true"}}); err == nil {
 		t.Fatal("expected an error for an unknown flag name")
+	}
+}
+
+func TestBuildAnalyzersLowercasedSettings(t *testing.T) {
+	t.Parallel()
+
+	// golangci's settings decoding (viper) lowercases YAML map keys, so rule-name keys
+	// carrying flags arrive as "azs004" — they must still resolve to AZS004.
+	p, err := New(map[string]any{"azs004": map[string]any{"allow-missing-values": true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pl, ok := p.(*Plugin)
+	if !ok {
+		t.Fatalf("expected *Plugin, got %T", p)
+	}
+	analyzers, err := pl.BuildAnalyzers()
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, a := range analyzers {
+		if a.Name != "AZS004" {
+			continue
+		}
+		found = true
+		if f := a.Flags.Lookup("allow-missing-values"); f == nil || f.Value.String() != "true" {
+			t.Fatalf("expected AZS004 allow-missing-values flag to be true, got %v", f)
+		}
+	}
+	if !found {
+		t.Fatal("AZS004 missing from built analyzers")
+	}
+
+	// enable/disable list values keep their case, but tolerate lowercase for consistency
+	names, err := buildAnalyzers(t, map[string]any{"disable": []string{"azr002"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Contains(names, "AZR002") {
+		t.Fatal("expected lowercase disable entry to disable AZR002")
 	}
 }
