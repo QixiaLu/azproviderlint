@@ -50,7 +50,7 @@ func run(pass *analysis.Pass) (any, error) {
 	}
 
 	// Skip packages listed in exclude-packages (comma-separated).
-	for _, pkg := range strings.Split(excludePackages, ",") {
+	for pkg := range strings.SplitSeq(excludePackages, ",") {
 		if strings.TrimSpace(pkg) == pass.Pkg.Name() {
 			return nil, nil
 		}

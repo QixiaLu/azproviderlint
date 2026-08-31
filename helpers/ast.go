@@ -1,3 +1,4 @@
+// Package helpers defines functions that are reused in multiple checks
 package helpers
 
 import (
