@@ -1,5 +1,5 @@
-// Package AZG006 reports flatten* functions that return nil slices.
-package AZG006
+// Package AZR008 reports flatten* functions that return nil slices.
+package AZR008
 
 import (
 	"errors"
@@ -16,9 +16,9 @@ import (
 
 // Analyzer checks that flatten* helpers return empty slices instead of nil.
 var Analyzer = &analysis.Analyzer{
-	Name:     "AZG006",
+	Name:     "AZR008",
 	Doc:      "check that flatten functions returning slices return an empty slice instead of nil",
-	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZG/AZG006_flatten_returns_nil_slice/README.md",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR008_flatten_returns_nil_slice/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }
@@ -38,7 +38,7 @@ func run(pass *analysis.Pass) (any, error) {
 
 	errorInterface, ok := types.Universe.Lookup("error").Type().Underlying().(*types.Interface)
 	if !ok {
-		return nil, errors.New("AZG006: could not resolve the built-in error interface type")
+		return nil, errors.New("AZR008: could not resolve the built-in error interface type")
 	}
 
 	nodeFilter := []ast.Node{(*ast.FuncDecl)(nil)}
