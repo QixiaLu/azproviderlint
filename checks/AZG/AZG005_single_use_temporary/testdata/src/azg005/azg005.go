@@ -45,9 +45,9 @@ func validUsedTwice(in input, out *output) {
 	out.Names = []string{format}
 }
 
-// Should NOT be flagged: the consuming statement is not adjacent.
-func validNotAdjacent(in input, out *output) {
-	format := from(in.Format)
+// Should be flagged: the consumer no longer needs to be adjacent, only within max-gap lines.
+func invalidNotAdjacent(in input, out *output) {
+	format := from(in.Format) // want `"format" is only used by the statement on line \d+ and should be inlined`
 	out.Names = nil
 	out.Format = format
 }
@@ -111,3 +111,10 @@ func invalidInFuncLit(in input, out *output) {
 func use(string)                      {}
 func outputs() []string               { return nil }
 func fromErr(*string) (string, error) { return "", nil }
+
+// Should be flagged: the temporary's only use is two statements later, within max-gap.
+func invalidLaterConsumer(in input, out *output) {
+	format := from(in.Format) // want `"format" is only used by the statement on line \d+ and should be inlined`
+	out.Names = []string{"a"}
+	out.Format = format
+}
