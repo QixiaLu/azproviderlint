@@ -1,3 +1,7 @@
+## Unreleased
+
+- add rule `AZG006`: detect `flatten*` functions that return `nil` for a slice result instead of an empty slice (`[]T{}`/`make([]T, 0)`) — covers the slice position of multi-value returns, named slice types (`type ACLs []T`), and multi-name result fields matched by returned-value position; skips error paths (`return nil, err`) and returns inside nested closures so only the empty/nil-input branch is flagged, and leaves non-slice results and `expand*` functions alone; reports carry a suggested fix applied via `-fix`
+
 ## v0.3.2 (2026-08-28)
 
 - `AZS004`: track-1 advice now suggests `validation.StringInEnumSlice(cdn.PossibleTransformValues(), false)` when the call's validation package exports a generic `StringInEnumSlice` wrapper ([azurerm#33246](https://github.com/hashicorp/terraform-provider-azurerm/pull/33246)); `pointer.FromEnumSlice(pointer.To(...))` remains the fallback
