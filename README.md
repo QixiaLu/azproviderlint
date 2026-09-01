@@ -100,7 +100,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 | [AZG002](checks/AZG/AZG002_error_should_describe_expected_format) | 'invalid format' error messages must describe the expected format |
 | [AZG003](checks/AZG/AZG003_pointer_to_enum_conversion) | use pointer.ToEnum for enum conversions |
 | [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | use pointer.From instead of nil-check dereference |
-| [AZG005](checks/AZG/AZG005_single_use_temporary) | inline single-use temporaries consumed by the next statement |
+| [AZG005](checks/AZG/AZG005_single_use_temporary) | inline single-use variable only used in a later assignment or return |
 
 ### AZR — Resource Implementation
 

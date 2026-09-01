@@ -1,9 +1,11 @@
-// Package AZG005 defines an analyzer that reports single-use temporaries immediately consumed
-// by the next statement — `x := <expr>` followed by `y = x` or `return x` where x has no other
-// use — which should be inlined.
+// Package AZG005 defines an analyzer that reports single-use temporaries consumed by a later
+// statement in the same block — `x := <expr>` followed by `y = x` or `return x` where x has no
+// other use — which should be inlined. The consumer may be at most max-gap source lines below
+// the declaration (default 100), keeping the inline local enough to read.
 package AZG005
 
 import (
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -16,8 +18,8 @@ import (
 )
 
 // Analyzer checks for a short variable declaration whose variable is used exactly once in the
-// entire function, by the immediately following statement, as the bare right-hand side of a
-// plain assignment or as the sole return value. Such a temporary adds a name without adding
+// entire function, by a later statement in the same block within max-gap source lines, as the
+// bare right-hand side of a plain assignment or as the sole return value. Such a temporary adds a name without adding
 // information — `output.Format = pointer.From(input.Format)` reads as well as the two-line
 // form — so it should be inlined.
 //
@@ -31,6 +33,18 @@ var Analyzer = &analysis.Analyzer{
 	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZG/AZG005_single_use_temporary/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
+}
+
+// maxGap bounds how many source lines may separate the declaration from its consumer: far
+// apart pairs are legal to inline but moving an initializer hundreds of lines is a
+// readability loss, not a win (a provider config literal teleporting 450 lines down its
+// function is what motivated the default).
+var maxGap int
+
+func init() {
+	Analyzer.Flags.Init("AZG005", flag.ContinueOnError)
+	Analyzer.Flags.IntVar(&maxGap, "max-gap", 100,
+		"maximum number of source lines between the temporary's declaration and its consumer")
 }
 
 func run(pass *analysis.Pass) (any, error) {
@@ -76,7 +90,13 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 
 			for i := range len(stmts) - 1 {
-				checkPair(pass, body, stmts[i], stmts[i+1])
+				declEnd := pass.Fset.Position(stmts[i].End()).Line
+				for j := i + 1; j < len(stmts); j++ {
+					if pass.Fset.Position(stmts[j].Pos()).Line-declEnd > maxGap {
+						break
+					}
+					checkPair(pass, body, stmts[i], stmts[j], j == i+1)
+				}
 			}
 			return true
 		})
@@ -86,7 +106,7 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 // checkPair reports first when it declares a single-use temporary that second consumes.
-func checkPair(pass *analysis.Pass, body *ast.BlockStmt, first, second ast.Stmt) {
+func checkPair(pass *analysis.Pass, body *ast.BlockStmt, first, second ast.Stmt, adjacent bool) {
 	assign, ok := first.(*ast.AssignStmt)
 	if !ok || assign.Tok != token.DEFINE || len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
 		return
@@ -111,10 +131,15 @@ func checkPair(pass *analysis.Pass, body *ast.BlockStmt, first, second ast.Stmt)
 		return
 	}
 
+	message := fmt.Sprintf("%q is only used by the following statement and should be inlined", ident.Name)
+	if !adjacent {
+		message = fmt.Sprintf("%q is only used by the statement on line %d and should be inlined",
+			ident.Name, pass.Fset.Position(second.Pos()).Line)
+	}
 	pass.Report(analysis.Diagnostic{
 		Pos:            assign.Pos(),
-		Message:        fmt.Sprintf("%q is only used by the following statement and should be inlined", ident.Name),
-		SuggestedFixes: suggestedFixes(pass, assign, second, useExpr),
+		Message:        message,
+		SuggestedFixes: suggestedFixes(pass, assign, second, useExpr, adjacent),
 	})
 }
 
@@ -150,16 +175,28 @@ func consumesAsBareValue(pass *analysis.Pass, stmt ast.Stmt, obj types.Object) (
 // suggestedFixes deletes the temporary's declaration and replaces the consuming reference with
 // the declaration's initializer, spliced as raw source text so multi-line initializers keep
 // their exact original formatting.
-func suggestedFixes(pass *analysis.Pass, assign *ast.AssignStmt, consumer ast.Stmt, useExpr ast.Expr) []analysis.SuggestedFix {
+func suggestedFixes(pass *analysis.Pass, assign *ast.AssignStmt, consumer ast.Stmt, useExpr ast.Expr, adjacent bool) []analysis.SuggestedFix {
 	exprSrc, ok := sourceText(pass, assign.Rhs[0])
 	if !ok {
 		return nil
 	}
 
+	// adjacent pairs delete straight through to the consumer; a distant consumer must leave
+	// the intervening statements alone, so only the declaration's own lines are removed
+	del := analysis.TextEdit{Pos: assign.Pos(), End: consumer.Pos()}
+	if !adjacent {
+		tf := pass.Fset.File(assign.Pos())
+		delEnd := assign.End()
+		if endLine := tf.Line(assign.End()); endLine+1 <= tf.LineCount() {
+			delEnd = tf.LineStart(endLine + 1)
+		}
+		del = analysis.TextEdit{Pos: tf.LineStart(tf.Line(assign.Pos())), End: delEnd}
+	}
+
 	return []analysis.SuggestedFix{{
 		Message: "Inline the temporary into the consuming statement",
 		TextEdits: []analysis.TextEdit{
-			{Pos: assign.Pos(), End: consumer.Pos()},
+			del,
 			{Pos: useExpr.Pos(), End: useExpr.End(), NewText: exprSrc},
 		},
 	}}

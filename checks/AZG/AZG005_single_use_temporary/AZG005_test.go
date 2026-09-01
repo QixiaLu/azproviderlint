@@ -15,4 +15,10 @@ func TestAZG005(t *testing.T) {
 	dir := filepath.Join(filepath.Dir(filename), "testdata")
 
 	analysistest.RunWithSuggestedFixes(t, dir, Analyzer, "azg005")
+
+	// maxGap is package state read during run, so the flag fixture must run sequentially
+	// within the same test rather than as a parallel sibling
+	maxGap = 3
+	analysistest.Run(t, dir, Analyzer, "azg005maxgap")
+	maxGap = 100
 }
