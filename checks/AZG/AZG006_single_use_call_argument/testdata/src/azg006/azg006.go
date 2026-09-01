@@ -1,0 +1,89 @@
+package azg006
+
+type props struct{ V *string }
+
+type resourceData struct{}
+
+func (resourceData) Set(k string, v interface{}) error { return nil }
+
+func flattenThing(p *string) []string {
+	if p == nil {
+		return []string{}
+	}
+	return []string{*p}
+}
+
+// Should be flagged: consumed by the next statement's call, sibling argument is a literal.
+func invalidAdjacentCall(d resourceData, p props) {
+	apns := flattenThing(p.V) // want `"apns" is only used by the following call and should be inlined`
+	d.Set("apns_credential", apns)
+}
+
+// Should be flagged: consumed by the call in an if statement's init.
+func invalidIfInitCall(d resourceData, p props) error {
+	gcm := flattenThing(p.V) // want `"gcm" is only used by the following call and should be inlined`
+	if err := d.Set("gcm_credential", gcm); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Should be flagged: the consuming call is a later statement within max-gap.
+func invalidLaterCall(d resourceData, p props, other *int) {
+	apns := flattenThing(p.V) // want `"apns" is only used by the call on line \d+ and should be inlined`
+	*other = 1
+	d.Set("apns_credential", apns)
+}
+
+// Should be flagged: a plain identifier sibling is accepted by default.
+func invalidIdentSibling(d resourceData, p props, key string) {
+	apns := flattenThing(p.V) // want `"apns" is only used by the following call and should be inlined`
+	d.Set(key, apns)
+}
+
+// Should NOT be flagged: a sibling argument is a complex expression, so the name is
+// documentation and inlining could reorder evaluation.
+func validComplexSibling(d resourceData, p props, keys []string) {
+	apns := flattenThing(p.V)
+	d.Set(keys[0], apns)
+}
+
+// Should NOT be flagged: the initializer spans multiple lines.
+func validMultiLineInitializer(d resourceData) {
+	list := []string{
+		"a",
+	}
+	d.Set("k", list)
+}
+
+// Should NOT be flagged: the variable is used more than once.
+func validTwoUses(d resourceData, p props) {
+	apns := flattenThing(p.V)
+	d.Set("a", apns)
+	d.Set("b", apns)
+}
+
+// Should be flagged: temporaries inside a closure are checked within that closure.
+func invalidInsideClosure(d resourceData, p props) {
+	f := func() {
+		apns := flattenThing(p.V) // want `"apns" is only used by the following call and should be inlined`
+		d.Set("apns_credential", apns)
+	}
+	f()
+}
+
+func expand(v []string) map[string]interface{} { return nil }
+
+func sink(v interface{}) {}
+
+// Should be flagged: a single-argument call has no siblings to disqualify it.
+func invalidSoleArgument(p props) {
+	t := flattenThing(p.V) // want `"t" is only used by the following call and should be inlined`
+	sink(t)
+}
+
+// Should NOT be flagged: the variable is the function being called, not an argument.
+func validCalleePosition(fns map[string]func(string)) {
+	f := fns["a"]
+	f("k")
+}

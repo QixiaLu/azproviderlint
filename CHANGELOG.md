@@ -1,3 +1,7 @@
+## Unreleased
+
+- add rule `AZG006`: single-use variables only used as an argument of a later call should be inlined (`x := flattenThing(...)` then `d.Set("key", x)`); sibling arguments must be literals or plain identifiers, the initializer must be single-line, and `max-gap` bounds the distance (default 100); `only-when-literals` and `maximum-arguments` tighten the rule; fixable with `-fix`
+
 ## v0.4.0 (2026-09-01)
 
 - `AZG005` now also flags temporaries consumed by a later statement in the same block, up to `max-gap` source lines away (default 100)
