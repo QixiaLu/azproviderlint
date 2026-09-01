@@ -8,7 +8,7 @@ import (
 	"go/token"
 	"go/types"
 
-	"github.com/katbyte/azproviderlint/helpers"
+	"github.com/katbyte/azproviderlint/lib/astx"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -58,7 +58,7 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		// computed-only blocks cannot be set in configuration
-		if !helpers.IsTrueConstant(pass, fields["Optional"]) && !helpers.IsTrueConstant(pass, fields["Required"]) {
+		if !astx.IsTrueConstant(pass, fields["Optional"]) && !astx.IsTrueConstant(pass, fields["Required"]) {
 			return
 		}
 
@@ -90,7 +90,7 @@ func run(pass *analysis.Pass) (any, error) {
 				return
 			}
 			propertyFields := compositeLitFields(property)
-			if helpers.IsTrueConstant(pass, propertyFields["Required"]) ||
+			if astx.IsTrueConstant(pass, propertyFields["Required"]) ||
 				isSet(propertyFields["Default"]) || isSet(propertyFields["DefaultFunc"]) ||
 				isSet(propertyFields["AtLeastOneOf"]) || isSet(propertyFields["ExactlyOneOf"]) {
 				return

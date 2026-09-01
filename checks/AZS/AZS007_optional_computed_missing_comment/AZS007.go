@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/katbyte/azproviderlint/helpers"
+	"github.com/katbyte/azproviderlint/lib/astx"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -174,12 +174,12 @@ func findOptionalAndComputedPositions(pass *analysis.Pass, cl *ast.CompositeLit)
 
 		switch key.Name {
 		case "Optional":
-			if helpers.IsTrueConstant(pass, kv.Value) {
+			if astx.IsTrueConstant(pass, kv.Value) {
 				hasOptional = true
 				optionalPos = kv.Key.Pos()
 			}
 		case "Computed":
-			if helpers.IsTrueConstant(pass, kv.Value) {
+			if astx.IsTrueConstant(pass, kv.Value) {
 				hasComputed = true
 				computedPos = kv.Key.Pos()
 			}

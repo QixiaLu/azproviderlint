@@ -1,5 +1,5 @@
-// Package helpers defines functions that are reused in multiple checks
-package helpers
+// Package astx defines AST helper functions that are reused in multiple checks.
+package astx
 
 import (
 	"go/ast"
