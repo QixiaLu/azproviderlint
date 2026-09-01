@@ -1,4 +1,4 @@
-# AZS004
+# AZS004 - enum validation must use the possible values helper
 
 The AZS004 analyzer reports `validation.StringInSlice([]string{...}, ...)` calls whose hand-written list references an SDK enum's constants. A partial list silently rejects values the API accepts, and even a complete list goes stale the moment the SDK adds a new value — when the SDK ships a possible-values helper, validation should use it. Incomplete lists are reported with the missing values named; complete lists are reported with a suggestion to switch to the helper; lists carrying values that are not part of the enum at all (typos, or deliberate legacy extras) are reported with the extra values named and advice to append any deliberate extras to the helper's result rather than swapping them away.
 

@@ -1,4 +1,4 @@
-# AZD001
+# AZD001 - data sources must error when not found, not SetId("")
 
 The AZD001 analyzer reports data sources calling `d.SetId("")`.
 

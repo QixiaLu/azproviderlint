@@ -1,4 +1,4 @@
-# AZR008
+# AZR008 - flatten functions must return empty slices, not nil
 
 The AZR008 analyzer reports `flatten*` functions that return `nil` for a slice result, where an empty slice (`[]T{}` or `make([]T, 0)`) should be returned instead.
 

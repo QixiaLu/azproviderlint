@@ -4,7 +4,7 @@ package AZC
 import (
 	"golang.org/x/tools/go/analysis"
 
-	AZC001 "github.com/katbyte/azproviderlint/checks/AZC/AZC001_client_missing_base_uri"
+	AZC001 "github.com/katbyte/azproviderlint/checks/AZC/AZC001_client_missing_resource_manager_endpoint"
 )
 
 // Checks contains all AZC (client & SDK usage) analyzers.

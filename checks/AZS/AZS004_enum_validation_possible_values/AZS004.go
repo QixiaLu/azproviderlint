@@ -29,7 +29,7 @@ import (
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZS004",
 	Doc:      "check that enum validation uses the SDK's possible-values helper or lists every possible value",
-	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZS/AZS004_enum_validation_missing_values/README.md",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZS/AZS004_enum_validation_possible_values/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

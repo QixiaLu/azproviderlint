@@ -1,4 +1,4 @@
-# AZR006
+# AZR006 - use timeouts wrappers, not StopContext
 
 The AZR006 analyzer reports `ctx` being assigned directly from the provider meta object (`ctx := meta.(*clients.Client).StopContext`).
 

@@ -1,4 +1,4 @@
-# AZS007
+# AZS007 - optional+computed fields must have a Note: O+C comment
 
 The AZS007 analyzer reports `schema.Schema` fields that have both `Optional: true` and `Computed: true` (O+C) without a `// Note: O+C because ...` comment between the two field declarations.
 

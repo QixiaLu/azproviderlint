@@ -1,4 +1,4 @@
-# AZG000
+# AZG000 - azignore directives must give a reason
 
 The AZG000 analyzer reports `//azignore:` directives that do not carry a reason. A suppression without a reason tells the next reader nothing — whether the flagged code is a deliberate exception, a false positive, or debt someone meant to come back to — so every directive must say why the check does not apply:
 

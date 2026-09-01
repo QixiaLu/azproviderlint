@@ -1,4 +1,4 @@
-# AZS001
+# AZS001 - typed sdk models must use explicit 64 bit
 
 The AZS001 analyzer reports typed SDK model fields (struct fields tagged `tfschema`) using non-64-bit numeric types: `int`, `int16` or `int32` instead of `int64`, and `float32` instead of `float64`.
 

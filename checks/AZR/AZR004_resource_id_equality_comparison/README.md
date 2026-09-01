@@ -1,4 +1,4 @@
-# AZR004
+# AZR004 - compare resource id types with resourceids.Match
 
 The AZR004 analyzer reports Resource IDs being compared with `==` or `!=` (`a.ID() == b.ID()`).
 

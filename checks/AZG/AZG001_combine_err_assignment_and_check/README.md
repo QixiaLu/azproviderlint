@@ -1,4 +1,4 @@
-# AZG001
+# AZG001 - combine err assignment and check into one if
 
 The AZG001 analyzer reports `err := SomeFunc()` and `_, err := SomeFunc()` assignments immediately followed by `if err != nil`, which should be combined into a single `if` init statement to keep the error scoped to its check and the happy path unindented.
 

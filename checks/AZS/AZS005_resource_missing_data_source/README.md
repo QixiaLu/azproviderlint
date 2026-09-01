@@ -1,4 +1,4 @@
-# AZS005
+# AZS005 - resources should have a matching data source
 
 The AZS005 analyzer reports registered resources that have no data source of the same terraform type name registered in the service package. Every registration flavour contributes to both sides of the comparison, so a resource registered one way is covered by a data source registered any other way:
 

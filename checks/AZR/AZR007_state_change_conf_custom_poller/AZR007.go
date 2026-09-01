@@ -24,7 +24,7 @@ const stateChangeConfPkgPath = "github.com/hashicorp/terraform-plugin-sdk/v2/hel
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZR007",
 	Doc:      "check for StateChangeConf usage that should use a Custom Poller instead",
-	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR007_state_change_conf/README.md",
+	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZR/AZR007_state_change_conf_custom_poller/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

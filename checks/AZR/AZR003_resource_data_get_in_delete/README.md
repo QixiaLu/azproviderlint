@@ -1,4 +1,4 @@
-# AZR003
+# AZR003 - no d.Get in Delete functions
 
 The AZR003 analyzer reports `d.Get(...)` (untyped resources, in the function registered as `Delete:`) and `metadata.ResourceData.Get(...)` (typed resources, in the `Delete() sdk.ResourceFunc` method) being used inside a resource's Delete function.
 

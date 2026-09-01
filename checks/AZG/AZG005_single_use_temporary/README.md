@@ -1,4 +1,4 @@
-# AZG005
+# AZG005 - inline single-use temporaries consumed by the next statement
 
 The AZG005 analyzer reports single-use temporaries immediately consumed by the next statement: `x := <expr>` followed by `y = x` or `return x`, where `x` has no other use in the function. Such a temporary adds a name without adding information — the inlined form reads just as well in one statement.
 
