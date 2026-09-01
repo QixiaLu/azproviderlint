@@ -1,8 +1,8 @@
-// Package AZG006 defines an analyzer that reports flatten* functions returning nil for a slice
-// result, where an empty slice should be returned instead.
+// Package AZG006 reports flatten* functions that return nil slices.
 package AZG006
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/types"
@@ -13,17 +13,20 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-// Analyzer checks that flatten* functions returning a slice type return an empty slice rather
-// than nil. Callers of flatten helpers routinely range over or set the result straight into
-// schema state, where a nil slice and an empty slice diverge — nil can surface as a spurious
-// diff or a nil-map assignment — so the nil-input guard should return `[]T{}` (or
-// `make([]T, 0)`) instead of nil.
+// Analyzer checks that flatten* helpers return empty slices instead of nil.
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZG006",
 	Doc:      "check that flatten functions returning slices return an empty slice instead of nil",
 	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZG/AZG006_flatten_returns_nil_slice/README.md",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
+}
+
+// resultInfo describes one logical return position.
+type resultInfo struct {
+	typeStr string
+	isSlice bool
+	isError bool
 }
 
 func run(pass *analysis.Pass) (any, error) {
@@ -34,7 +37,7 @@ func run(pass *analysis.Pass) (any, error) {
 
 	errorInterface, ok := types.Universe.Lookup("error").Type().Underlying().(*types.Interface)
 	if !ok {
-		return nil, nil
+		return nil, errors.New("AZG006: could not resolve the built-in error interface type")
 	}
 
 	nodeFilter := []ast.Node{(*ast.FuncDecl)(nil)}
@@ -45,7 +48,8 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 
-		if !strings.HasPrefix(strings.ToLower(funcDecl.Name.Name), "flatten") {
+		name := funcDecl.Name.Name
+		if len(name) < 7 || !strings.EqualFold(name[:7], "flatten") {
 			return
 		}
 
@@ -53,49 +57,56 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 
-		// Record which result positions are slice types; only those may be flagged.
-		type sliceResult struct {
-			index int
-			typ   *ast.ArrayType
-		}
-		var sliceResults []sliceResult
-		for i, result := range funcDecl.Type.Results.List {
-			if arr, ok := result.Type.(*ast.ArrayType); ok {
-				sliceResults = append(sliceResults, sliceResult{index: i, typ: arr})
+		// Keep one entry per return position, including multi-name fields.
+		var results []resultInfo
+		haveSlice := false
+		for _, field := range funcDecl.Type.Results.List {
+			info := resultInfo{typeStr: types.ExprString(field.Type)}
+			if t := pass.TypesInfo.TypeOf(field.Type); t != nil {
+				if _, ok := t.Underlying().(*types.Slice); ok {
+					info.isSlice = true
+				}
+				info.isError = types.Implements(t, errorInterface)
+			}
+			haveSlice = haveSlice || info.isSlice
+			positions := len(field.Names)
+			if positions == 0 {
+				positions = 1
+			}
+			for range positions {
+				results = append(results, info)
 			}
 		}
-		if len(sliceResults) == 0 {
+		if !haveSlice {
 			return
 		}
 
 		ast.Inspect(funcDecl.Body, func(node ast.Node) bool {
+			if _, ok := node.(*ast.FuncLit); ok {
+				return false
+			}
+
 			retStmt, ok := node.(*ast.ReturnStmt)
 			if !ok || len(retStmt.Results) == 0 {
 				return true
 			}
 
-			// An error path (`return nil, err`) legitimately returns nil for the slice; only
-			// the empty/nil-input branch, whose error results are all nil (or absent), is a
-			// real finding, so skip any return carrying a non-nil error.
-			for _, res := range retStmt.Results {
-				if isNonNilError(pass, res, errorInterface) {
+			for i, res := range retStmt.Results {
+				if i < len(results) && results[i].isError && isNonNilError(pass, res, errorInterface) {
 					return true
 				}
 			}
 
-			// Collect every slice position that returns nil so a single report rewrites them
-			// all — `return nil, nil` in an `([]T, []U)` flatten becomes `[]T{}, []U{}`.
 			var edits []analysis.TextEdit
-			for _, sr := range sliceResults {
-				if sr.index >= len(retStmt.Results) {
+			for i, res := range retStmt.Results {
+				if i >= len(results) || !results[i].isSlice {
 					continue
 				}
-				expr := retStmt.Results[sr.index]
-				if isNilIdent(pass, expr) {
+				if isNilIdent(pass, res) {
 					edits = append(edits, analysis.TextEdit{
-						Pos:     expr.Pos(),
-						End:     expr.End(),
-						NewText: []byte(types.ExprString(sr.typ) + "{}"),
+						Pos:     res.Pos(),
+						End:     res.End(),
+						NewText: []byte(results[i].typeStr + "{}"),
 					})
 				}
 			}
@@ -129,9 +140,7 @@ func isNilIdent(pass *analysis.Pass, expr ast.Expr) bool {
 	return isNil
 }
 
-// isNonNilError reports whether expr is a non-nil value implementing the error interface —
-// `err`, `fmt.Errorf(...)`, `&myError{}` — marking the return as an error path rather than the
-// empty/nil-input branch this check targets.
+// isNonNilError reports whether expr is a non-nil value implementing error.
 func isNonNilError(pass *analysis.Pass, expr ast.Expr, errorInterface *types.Interface) bool {
 	if isNilIdent(pass, expr) {
 		return false

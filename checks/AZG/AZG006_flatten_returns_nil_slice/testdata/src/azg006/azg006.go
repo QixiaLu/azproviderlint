@@ -10,6 +10,8 @@ type NetworkRuleSet struct {
 	Rules []string
 }
 
+type ACLList []NetworkACLs
+
 func validate(input *NetworkRuleSet) error {
 	return nil
 }
@@ -95,4 +97,49 @@ func flattenThreeWithError(input *NetworkRuleSet) ([]NetworkACLs, []any, error) 
 		return nil, nil, err
 	}
 	return []NetworkACLs{{Name: "test"}}, []any{"a"}, nil
+}
+
+// Should be flagged: the flatten prefix match is case-insensitive
+func FlattenUpperCase(input *NetworkRuleSet) []NetworkACLs {
+	if input == nil {
+		return nil // want `flatten function "FlattenUpperCase" should return an empty slice instead of nil`
+	}
+	return []NetworkACLs{{Name: "test"}}
+}
+
+// Should be flagged: a multi-name slice field expands to every return position it covers
+func flattenMultiName(input *NetworkRuleSet) (a, b []NetworkACLs, err error) {
+	if input == nil {
+		return nil, nil, nil // want `flatten function "flattenMultiName" should return an empty slice instead of nil`
+	}
+	return []NetworkACLs{{Name: "test"}}, []NetworkACLs{{Name: "test2"}}, nil
+}
+
+// Should be flagged: named slice types are detected via the type checker, not the syntax
+func flattenNamedSliceType(input *NetworkRuleSet) ACLList {
+	if input == nil {
+		return nil // want `flatten function "flattenNamedSliceType" should return an empty slice instead of nil`
+	}
+	return ACLList{{Name: "test"}}
+}
+
+// Should NOT be flagged: a nil return inside a closure answers to the closure, not the flatten function
+func flattenWithClosure(input *NetworkRuleSet) []NetworkACLs {
+	build := func() []string {
+		return nil
+	}
+	_ = build
+	if input == nil {
+		return []NetworkACLs{}
+	}
+	return []NetworkACLs{{Name: "test"}}
+}
+
+// Should NOT be flagged: naked returns are intentionally out of scope
+func flattenNakedReturn(input *NetworkRuleSet) (ret []NetworkACLs) {
+	if input == nil {
+		return
+	}
+	ret = []NetworkACLs{{Name: "test"}}
+	return
 }
