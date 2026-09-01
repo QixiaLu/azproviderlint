@@ -1,6 +1,6 @@
 module github.com/katbyte/azproviderlint
 
-go 1.25.3
+go 1.26.6
 
 require (
 	github.com/golangci/plugin-module-register v0.1.2
