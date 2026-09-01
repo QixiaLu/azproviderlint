@@ -44,3 +44,38 @@ func IsNilValue(pass *analysis.Pass, expr ast.Expr) bool {
 	}
 	return false
 }
+
+// IsUseOf reports whether expr is (modulo parentheses) an identifier resolving to obj.
+func IsUseOf(pass *analysis.Pass, expr ast.Expr, obj types.Object) bool {
+	id, ok := ast.Unparen(expr).(*ast.Ident)
+	return ok && pass.TypesInfo.Uses[id] == obj
+}
+
+// UseCount counts references to obj within node.
+func UseCount(pass *analysis.Pass, node ast.Node, obj types.Object) int {
+	count := 0
+	ast.Inspect(node, func(n ast.Node) bool {
+		if id, ok := n.(*ast.Ident); ok && pass.TypesInfo.Uses[id] == obj {
+			count++
+		}
+		return true
+	})
+	return count
+}
+
+// SourceText returns the raw source bytes of node.
+func SourceText(pass *analysis.Pass, node ast.Node) ([]byte, bool) {
+	tf := pass.Fset.File(node.Pos())
+	if tf == nil {
+		return nil, false
+	}
+	content, err := pass.ReadFile(tf.Name())
+	if err != nil {
+		return nil, false
+	}
+	start, end := tf.Offset(node.Pos()), tf.Offset(node.End())
+	if start < 0 || end > len(content) || start > end {
+		return nil, false
+	}
+	return content[start:end], true
+}

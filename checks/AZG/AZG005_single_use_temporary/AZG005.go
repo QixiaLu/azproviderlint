@@ -127,7 +127,7 @@ func checkPair(pass *analysis.Pass, body *ast.BlockStmt, first, second ast.Stmt,
 		return
 	}
 
-	if useCount(pass, body, obj) != 1 {
+	if astx.UseCount(pass, body, obj) != 1 {
 		return
 	}
 
@@ -151,7 +151,7 @@ func consumesAsBareValue(pass *analysis.Pass, stmt ast.Stmt, obj types.Object) (
 		if s.Tok != token.ASSIGN || len(s.Lhs) != 1 || len(s.Rhs) != 1 {
 			return nil, false
 		}
-		if !isUseOf(pass, s.Rhs[0], obj) {
+		if !astx.IsUseOf(pass, s.Rhs[0], obj) {
 			return nil, false
 		}
 		// a blank assignment is a discard, not a consumption worth inlining into
@@ -165,7 +165,7 @@ func consumesAsBareValue(pass *analysis.Pass, stmt ast.Stmt, obj types.Object) (
 		}
 		return s.Rhs[0], true
 	case *ast.ReturnStmt:
-		if len(s.Results) == 1 && isUseOf(pass, s.Results[0], obj) {
+		if len(s.Results) == 1 && astx.IsUseOf(pass, s.Results[0], obj) {
 			return s.Results[0], true
 		}
 	}
@@ -176,7 +176,7 @@ func consumesAsBareValue(pass *analysis.Pass, stmt ast.Stmt, obj types.Object) (
 // the declaration's initializer, spliced as raw source text so multi-line initializers keep
 // their exact original formatting.
 func suggestedFixes(pass *analysis.Pass, assign *ast.AssignStmt, consumer ast.Stmt, useExpr ast.Expr, adjacent bool) []analysis.SuggestedFix {
-	exprSrc, ok := sourceText(pass, assign.Rhs[0])
+	exprSrc, ok := astx.SourceText(pass, assign.Rhs[0])
 	if !ok {
 		return nil
 	}
@@ -200,39 +200,4 @@ func suggestedFixes(pass *analysis.Pass, assign *ast.AssignStmt, consumer ast.St
 			{Pos: useExpr.Pos(), End: useExpr.End(), NewText: exprSrc},
 		},
 	}}
-}
-
-// sourceText returns the raw source bytes of node.
-func sourceText(pass *analysis.Pass, node ast.Node) ([]byte, bool) {
-	tf := pass.Fset.File(node.Pos())
-	if tf == nil {
-		return nil, false
-	}
-	content, err := pass.ReadFile(tf.Name())
-	if err != nil {
-		return nil, false
-	}
-	start, end := tf.Offset(node.Pos()), tf.Offset(node.End())
-	if start < 0 || end > len(content) || start > end {
-		return nil, false
-	}
-	return content[start:end], true
-}
-
-// isUseOf reports whether expr is (modulo parentheses) an identifier resolving to obj.
-func isUseOf(pass *analysis.Pass, expr ast.Expr, obj types.Object) bool {
-	id, ok := ast.Unparen(expr).(*ast.Ident)
-	return ok && pass.TypesInfo.Uses[id] == obj
-}
-
-// useCount counts references to obj within body.
-func useCount(pass *analysis.Pass, body *ast.BlockStmt, obj types.Object) int {
-	count := 0
-	ast.Inspect(body, func(n ast.Node) bool {
-		if id, ok := n.(*ast.Ident); ok && pass.TypesInfo.Uses[id] == obj {
-			count++
-		}
-		return true
-	})
-	return count
 }
