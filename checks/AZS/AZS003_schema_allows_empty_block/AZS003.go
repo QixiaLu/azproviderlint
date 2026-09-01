@@ -6,9 +6,9 @@ package AZS003
 import (
 	"go/ast"
 	"go/token"
-	"go/types"
 
 	"github.com/katbyte/azproviderlint/lib/astx"
+	"github.com/katbyte/azproviderlint/lib/tf"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -40,7 +40,7 @@ func run(pass *analysis.Pass) (any, error) {
 
 	insp.Preorder(nodeFilter, func(n ast.Node) {
 		cl, ok := n.(*ast.CompositeLit)
-		if !ok || !isSchemaHelperType(pass, cl, "Schema") {
+		if !ok || !tf.IsSchemaHelperType(pass, cl, "Schema") {
 			return
 		}
 
@@ -67,7 +67,7 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 		resource, ok := ref.X.(*ast.CompositeLit)
-		if !ok || !isSchemaHelperType(pass, resource, "Resource") {
+		if !ok || !tf.IsSchemaHelperType(pass, resource, "Resource") {
 			return
 		}
 		properties, ok := compositeLitFields(resource)["Schema"].(*ast.CompositeLit)
@@ -102,24 +102,6 @@ func run(pass *analysis.Pass) (any, error) {
 	})
 
 	return nil, nil
-}
-
-// isSchemaHelperType reports whether the composite literal's type is the named type from a
-// package named "schema", which azurerm's pluginsdk aliases also resolve to.
-func isSchemaHelperType(pass *analysis.Pass, cl *ast.CompositeLit, name string) bool {
-	t := pass.TypesInfo.TypeOf(cl)
-	if t == nil {
-		return false
-	}
-	if ptr, ok := types.Unalias(t).(*types.Pointer); ok {
-		t = ptr.Elem()
-	}
-	named, ok := types.Unalias(t).(*types.Named)
-	if !ok {
-		return false
-	}
-	obj := named.Obj()
-	return obj.Name() == name && obj.Pkg() != nil && obj.Pkg().Name() == "schema"
 }
 
 func compositeLitFields(cl *ast.CompositeLit) map[string]ast.Expr {

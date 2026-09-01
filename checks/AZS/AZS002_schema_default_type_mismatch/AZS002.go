@@ -5,9 +5,9 @@ package AZS002
 import (
 	"go/ast"
 	"go/constant"
-	"go/types"
 	"slices"
 
+	"github.com/katbyte/azproviderlint/lib/tf"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -60,20 +60,7 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 
-		// match schema.Schema literals by their type, so direct helper/schema use, azurerm's
-		// pluginsdk aliases and literals elided inside map[string]*Schema all resolve the same
-		t := pass.TypesInfo.TypeOf(cl)
-		if t == nil {
-			return
-		}
-		if ptr, isPtr := types.Unalias(t).(*types.Pointer); isPtr {
-			t = ptr.Elem()
-		}
-		named, ok := types.Unalias(t).(*types.Named)
-		if !ok {
-			return
-		}
-		if obj := named.Obj(); obj.Name() != "Schema" || obj.Pkg() == nil || obj.Pkg().Name() != "schema" {
+		if !tf.IsSchemaHelperType(pass, cl, "Schema") {
 			return
 		}
 

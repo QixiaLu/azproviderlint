@@ -7,11 +7,11 @@ import (
 	"flag"
 	"go/ast"
 	"go/token"
-	"go/types"
 	"regexp"
 	"strings"
 
 	"github.com/katbyte/azproviderlint/lib/astx"
+	"github.com/katbyte/azproviderlint/lib/tf"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -67,20 +67,20 @@ func run(pass *analysis.Pass) (any, error) {
 		astFileByTokenFile[pass.Fset.File(f.Pos())] = f
 	}
 
-	// commentsFor returns the line to comment map for tf, building it on first access.
-	commentsFor := func(tf *token.File) fileComments {
-		if fc, ok := commentsByFile[tf]; ok {
+	// commentsFor returns the line to comment map for tokFile, building it on first access.
+	commentsFor := func(tokFile *token.File) fileComments {
+		if fc, ok := commentsByFile[tokFile]; ok {
 			return fc
 		}
 		fc := make(fileComments)
-		if f, ok := astFileByTokenFile[tf]; ok {
+		if f, ok := astFileByTokenFile[tokFile]; ok {
 			for _, cg := range f.Comments {
 				for _, c := range cg.List {
 					fc[pass.Fset.Position(c.Slash).Line] = c.Text
 				}
 			}
 		}
-		commentsByFile[tf] = fc
+		commentsByFile[tokFile] = fc
 		return fc
 	}
 
@@ -94,7 +94,7 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 
-		if !isSchemaType(pass, cl) {
+		if !tf.IsSchemaHelperType(pass, cl, "Schema") {
 			return
 		}
 
@@ -105,8 +105,8 @@ func run(pass *analysis.Pass) (any, error) {
 
 		// Determine the line range to search for a O+C comment.
 		// The comment must appear on a line between the Optional and Computed field lines.
-		tf := pass.Fset.File(cl.Pos())
-		if tf == nil {
+		tokFile := pass.Fset.File(cl.Pos())
+		if tokFile == nil {
 			return
 		}
 
@@ -119,7 +119,7 @@ func run(pass *analysis.Pass) (any, error) {
 			low, high = computedLine, optionalLine
 		}
 
-		fc := commentsFor(tf)
+		fc := commentsFor(tokFile)
 		for line := low + 1; line < high; line++ {
 			text, exists := fc[line]
 			if !exists {
@@ -134,27 +134,6 @@ func run(pass *analysis.Pass) (any, error) {
 	})
 
 	return nil, nil
-}
-
-// isSchemaType reports whether the composite literal represents a schema.Schema value,
-// including through pluginsdk's type alias.
-func isSchemaType(pass *analysis.Pass, cl *ast.CompositeLit) bool {
-	t := pass.TypesInfo.TypeOf(cl)
-	if t == nil {
-		return false
-	}
-
-	if ptr, ok := types.Unalias(t).(*types.Pointer); ok {
-		t = ptr.Elem()
-	}
-
-	named, ok := types.Unalias(t).(*types.Named)
-	if !ok {
-		return false
-	}
-
-	obj := named.Obj()
-	return obj.Name() == "Schema" && obj.Pkg() != nil && obj.Pkg().Name() == "schema"
 }
 
 // findOptionalAndComputedPositions returns the source positions of the Optional: true and

@@ -12,6 +12,7 @@ import (
 	"go/types"
 	"strings"
 
+	"github.com/katbyte/azproviderlint/lib/astx"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -177,7 +178,7 @@ func matchingNilCheckAssignment(ifStmt *ast.IfStmt, varName string) (ast.Expr, b
 	}
 
 	checkedExpr := binExpr.X
-	if containsCallExpr(checkedExpr) {
+	if astx.ContainsCallExpr(checkedExpr) {
 		return nil, false
 	}
 
@@ -211,20 +212,6 @@ func matchingNilCheckAssignment(ifStmt *ast.IfStmt, varName string) (ast.Expr, b
 func isNilIdent(expr ast.Expr) bool {
 	ident, ok := expr.(*ast.Ident)
 	return ok && ident.Name == "nil"
-}
-
-// containsCallExpr reports whether expr contains any function call, which would make the
-// pointer.From rewrite non-equivalent because the manual idiom evaluates the expression twice.
-func containsCallExpr(expr ast.Expr) bool {
-	found := false
-	ast.Inspect(expr, func(n ast.Node) bool {
-		if _, ok := n.(*ast.CallExpr); ok {
-			found = true
-			return false
-		}
-		return true
-	})
-	return found
 }
 
 const (

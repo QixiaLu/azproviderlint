@@ -4,9 +4,8 @@ package AZD002
 
 import (
 	"go/ast"
-	"path/filepath"
-	"strings"
 
+	"github.com/katbyte/azproviderlint/lib/tf"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -33,7 +32,7 @@ func run(pass *analysis.Pass) (any, error) {
 	}
 
 	insp.Preorder(nodeFilter, func(n ast.Node) {
-		if !inDataSourceFile(pass, n) {
+		if !tf.InDataSourceFile(pass, n) {
 			return
 		}
 
@@ -47,9 +46,4 @@ func run(pass *analysis.Pass) (any, error) {
 	})
 
 	return nil, nil
-}
-
-func inDataSourceFile(pass *analysis.Pass, n ast.Node) bool {
-	filename := filepath.Base(pass.Fset.Position(n.Pos()).Filename)
-	return strings.Contains(filename, "data_source")
 }

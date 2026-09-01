@@ -8,6 +8,7 @@ import (
 	"go/types"
 	"strings"
 
+	"github.com/katbyte/azproviderlint/lib/astx"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -44,7 +45,7 @@ func run(pass *analysis.Pass) (any, error) {
 
 	insp.Preorder(nodeFilter, func(n ast.Node) {
 		funcDecl, ok := n.(*ast.FuncDecl)
-		if !ok || funcDecl.Name == nil {
+		if !ok {
 			return
 		}
 
@@ -91,8 +92,12 @@ func run(pass *analysis.Pass) (any, error) {
 				return true
 			}
 
+			// An error path (`return nil, err`) legitimately returns nil for the slice; only
+			// the nil-input branch, whose error positions are all nil, is a real finding. Any
+			// value in a declared error position is an error path unless it is nil — the type
+			// checker already guarantees it implements error.
 			for i, res := range retStmt.Results {
-				if i < len(results) && results[i].isError && isNonNilError(pass, res, errorInterface) {
+				if i < len(results) && results[i].isError && !astx.IsNilValue(pass, res) {
 					return true
 				}
 			}
@@ -102,7 +107,7 @@ func run(pass *analysis.Pass) (any, error) {
 				if i >= len(results) || !results[i].isSlice {
 					continue
 				}
-				if isNilIdent(pass, res) {
+				if astx.IsNilValue(pass, res) {
 					edits = append(edits, analysis.TextEdit{
 						Pos:     res.Pos(),
 						End:     res.End(),
@@ -128,26 +133,4 @@ func run(pass *analysis.Pass) (any, error) {
 	})
 
 	return nil, nil
-}
-
-// isNilIdent reports whether expr is the predeclared nil identifier.
-func isNilIdent(pass *analysis.Pass, expr ast.Expr) bool {
-	ident, ok := expr.(*ast.Ident)
-	if !ok {
-		return false
-	}
-	_, isNil := pass.TypesInfo.Uses[ident].(*types.Nil)
-	return isNil
-}
-
-// isNonNilError reports whether expr is a non-nil value implementing error.
-func isNonNilError(pass *analysis.Pass, expr ast.Expr, errorInterface *types.Interface) bool {
-	if isNilIdent(pass, expr) {
-		return false
-	}
-	t := pass.TypesInfo.TypeOf(expr)
-	if t == nil {
-		return false
-	}
-	return types.Implements(t, errorInterface)
 }

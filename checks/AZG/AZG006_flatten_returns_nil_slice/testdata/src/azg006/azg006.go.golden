@@ -143,3 +143,12 @@ func flattenNakedReturn(input *NetworkRuleSet) (ret []NetworkACLs) {
 	ret = []NetworkACLs{{Name: "test"}}
 	return
 }
+
+// Should be flagged: a conversion of nil is still a nil slice, and a nil error
+// (`error(nil)`) does not make the return an error path
+func flattenConvertedNil(input *NetworkRuleSet) ([]NetworkACLs, error) {
+	if input == nil {
+		return []NetworkACLs{}, error(nil) // want `flatten function "flattenConvertedNil" should return an empty slice instead of nil`
+	}
+	return []NetworkACLs{}, nil
+}

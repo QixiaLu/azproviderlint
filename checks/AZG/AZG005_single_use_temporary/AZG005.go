@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"go/types"
 
+	"github.com/katbyte/azproviderlint/lib/astx"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -134,7 +135,7 @@ func consumesAsBareValue(pass *analysis.Pass, stmt ast.Stmt, obj types.Object) (
 		}
 		// inlining moves the initializer after the left-hand side's operands in evaluation
 		// order, so a call on the left-hand side could observe the swap
-		if containsCallExpr(s.Lhs[0]) {
+		if astx.ContainsCallExpr(s.Lhs[0]) {
 			return nil, false
 		}
 		return s.Rhs[0], true
@@ -197,17 +198,4 @@ func useCount(pass *analysis.Pass, body *ast.BlockStmt, obj types.Object) int {
 		return true
 	})
 	return count
-}
-
-// containsCallExpr reports whether expr contains any function call.
-func containsCallExpr(expr ast.Expr) bool {
-	found := false
-	ast.Inspect(expr, func(n ast.Node) bool {
-		if _, ok := n.(*ast.CallExpr); ok {
-			found = true
-			return false
-		}
-		return true
-	})
-	return found
 }
