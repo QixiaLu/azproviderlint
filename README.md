@@ -70,6 +70,13 @@ linters:
           disable: [AZR002]
 ```
 
+Some rules take options, set under a rule-name key in the same settings block (or `-<RULE>.<option>` on the standalone binary) — each rule's README documents its options:
+```yaml
+        settings:
+          AZS004: {allow-extra-values: true}
+          AZG005: {max-gap: 50}
+```
+
 To run just azproviderlint through the custom binary, skipping every other linter:
 ```bash
 custom-gcl run --enable-only azproviderlint ./...
