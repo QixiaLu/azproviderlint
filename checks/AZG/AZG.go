@@ -10,7 +10,7 @@ import (
 	AZG004 "github.com/katbyte/azproviderlint/checks/AZG/AZG004_zero_value_init_pointer_from"
 	AZG005 "github.com/katbyte/azproviderlint/checks/AZG/AZG005_single_use_temporary"
 	AZG006 "github.com/katbyte/azproviderlint/checks/AZG/AZG006_single_use_call_argument"
-	AZG007 "github.com/katbyte/azproviderlint/checks/AZG/AZG007_redundant_nil_pointer_field"
+	AZG007 "github.com/katbyte/azproviderlint/checks/AZG/AZG007_redundant_zero_value_field"
 )
 
 // Checks contains all AZG (general Go style & readability) analyzers.

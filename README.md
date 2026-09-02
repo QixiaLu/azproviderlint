@@ -102,7 +102,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 | [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | `y := <zero>; if x != nil { y = *x }` zero-value initialization followed by a nil check and pointer dereference must use the generic `pointer.From(x)` helper instead |
 | [AZG005](checks/AZG/AZG005_single_use_temporary) | `x := <expr>` immediately followed by `y = x` or `return x`, with no other use of `x`, should be inlined into the consuming statement |
 | [AZG006](checks/AZG/AZG006_single_use_call_argument) | `x := <expr>` used only as an argument of a later call (`d.Set("key", x)`), with no other use of `x`, should be inlined into that call |
-| [AZG007](checks/AZG/AZG007_redundant_nil_pointer_field) | Pointer fields in struct literals must not be explicitly set to `nil` (`Selector: nil`) — an omitted pointer field already defaults to `nil`; slices/maps/interfaces are left alone |
+| [AZG007](checks/AZG/AZG007_redundant_zero_value_field) | Struct literal fields must not be explicitly set to their zero value (`Selector: nil`, `Name: ""`, `Count: 0`, `Enabled: false`) — an omitted field already defaults to its zero value; slices/maps/interfaces and named-constant zeros are left alone |
 
 ### AZR — Resource Implementation
 

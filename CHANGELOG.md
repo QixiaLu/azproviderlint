@@ -1,7 +1,7 @@
 ## Unreleased
 
 - add rule `AZG006`: single-use variables only used as an argument of a later call should be inlined (`x := flattenThing(...)` then `d.Set("key", x)`); sibling arguments must be literals or plain identifiers, the initializer must be single-line, and `max-gap` bounds the distance (default 100); `only-when-literals` and `maximum-arguments` tighten the rule; fixable with `-fix`
-- add rule `AZG007`: detect pointer fields in struct literals explicitly set to `nil` (`Selector: nil`) that should be omitted, since an omitted pointer field already defaults to `nil` — only pointer fields are flagged (slices/maps/interfaces are left alone), and test files are skipped; reports carry a suggested fix applied via `-fix`
+- add rule `AZG007`: detect struct literal fields explicitly set to their zero value (`Selector: nil`, `Name: ""`, `Count: 0`, `Enabled: false`) that should be omitted, since an omitted field already defaults to its zero value — pointer, string, numeric, and bool fields are flagged (slices/maps/interfaces and named-constant zeros are left alone), and test files are skipped; reports carry a suggested fix applied via `-fix`
 
 ## v0.4.0 (2026-09-01)
 

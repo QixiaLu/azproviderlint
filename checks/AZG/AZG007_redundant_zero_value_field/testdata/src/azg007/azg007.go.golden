@@ -1,0 +1,119 @@
+package azg007
+
+type Config struct {
+	Name    *string
+	Options *Options
+	Items   []string          // slice - should NOT be flagged
+	Data    map[string]string // map - should NOT be flagged
+}
+
+type Options struct {
+	Enabled bool
+}
+
+// AutoStorageBaseProperties mirrors a real SDK payload struct (batch_account_resource.go).
+type AutoStorageBaseProperties struct {
+	StorageAccountId string
+}
+
+// KubeConfigModel mirrors a real flatten model (kubernetes_automatic_cluster_data_source.go).
+type KubeConfigModel struct {
+	Host                 string
+	Username             string
+	Password             string
+	ClientCertificate    string
+	ClientKey            string
+	ClusterCACertificate string
+}
+
+// Settings exercises numeric and boolean zero values.
+type Settings struct {
+	Retries int
+	Ratio   float64
+	Enabled bool
+	Mode    Mode
+}
+
+type Mode int
+
+const ModeNone Mode = 0
+
+const EmptyPassword string = ""
+
+const Disabled bool = false
+
+// Should be flagged: redundant nil on pointer fields
+func invalidCases() *Config {
+	return &Config{}
+}
+
+// Should be flagged but must preserve the comment leading the following field.
+func invalidPreservesFollowingComment() *Config {
+	return &Config{
+		// keep this comment for Options
+		Options: &Options{},
+	}
+}
+
+// Should be flagged: empty string on a real string field (batch_account_resource.go).
+func invalidEmptyString() *AutoStorageBaseProperties {
+	return &AutoStorageBaseProperties{}
+}
+
+// Should be flagged: empty strings on real flatten model fields (kubernetes_automatic_cluster_data_source.go).
+func invalidFlattenModel(host, name string) KubeConfigModel {
+	return KubeConfigModel{
+		Host:                 host,
+		Username:             name,
+		ClusterCACertificate: "ca-data",
+	}
+}
+
+// Should be flagged: numeric and boolean zero literals.
+func invalidNumericAndBool() *Settings {
+	return &Settings{}
+}
+
+// Should NOT be flagged: slices and maps default to nil meaningfully
+func validSliceAndMap() *Config {
+	return &Config{
+		Items: nil,
+		Data:  nil,
+	}
+}
+
+// Should NOT be flagged: a named constant documents intent even when its value is zero.
+func validNamedZeroConstant() *Settings {
+	return &Settings{
+		Mode: ModeNone,
+	}
+}
+
+// Should NOT be flagged: named zero constants for basic types preserve intent.
+func validNamedZeroBasicConstants() KubeConfigModel {
+	return KubeConfigModel{
+		Password:  EmptyPassword,
+		ClientKey: EmptyPassword,
+	}
+}
+
+// Should NOT be flagged: named false constant preserves intent.
+func validNamedFalseConstant() *Settings {
+	return &Settings{
+		Enabled: Disabled,
+	}
+}
+
+// Should NOT be flagged: non-zero values.
+func validNonZero() *Settings {
+	return &Settings{
+		Retries: 3,
+		Ratio:   1.5,
+		Enabled: true,
+	}
+}
+
+// Should NOT be flagged: fields omitted entirely
+func validOmitted() *Config {
+	return &Config{}
+}
