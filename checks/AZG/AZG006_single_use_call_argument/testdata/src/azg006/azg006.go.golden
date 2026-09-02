@@ -81,3 +81,11 @@ func validCalleePosition(fns map[string]func(string)) {
 	f := fns["a"]
 	f("k")
 }
+
+// Should NOT be flagged: an intervening statement writes to an operand of the initializer,
+// so inlining would flatten the overwritten value.
+func validInterveningOperandWrite(d resourceData, p props) {
+	apns := flattenThing(p.V)
+	p.V = nil
+	d.Set("apns_credential", apns)
+}

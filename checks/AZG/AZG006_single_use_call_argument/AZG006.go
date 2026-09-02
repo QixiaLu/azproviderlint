@@ -29,7 +29,9 @@ import (
 // left alone. The only-when-literals flag restricts siblings to literals only, and
 // maximum-arguments skips calls carrying more than that many arguments (0 = unlimited).
 // Multi-line initializers are out of scope since splicing one into an argument list hurts
-// readability — SDK payload literals passed to client calls are the common case.
+// readability — SDK payload literals passed to client calls are the common case. Nothing is
+// reported when an intervening statement writes to, takes the address of, or shadows anything
+// the initializer reads — there the temporary preserves a value the intervening code changes.
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZG006",
 	Doc:      "check for single-use variables only used in a later function call that should be inlined",
@@ -109,7 +111,7 @@ func run(pass *analysis.Pass) (any, error) {
 					if pass.Fset.Position(stmts[j].Pos()).Line-declEnd > maxGap {
 						break
 					}
-					checkPair(pass, body, stmts[i], stmts[j], j == i+1)
+					checkPair(pass, body, stmts[i], stmts[j], stmts[i+1:j])
 				}
 			}
 			return true
@@ -121,7 +123,8 @@ func run(pass *analysis.Pass) (any, error) {
 
 // checkPair reports first when it declares a single-use, single-line temporary that second
 // consumes as a call argument among literal siblings.
-func checkPair(pass *analysis.Pass, body *ast.BlockStmt, first, second ast.Stmt, adjacent bool) {
+func checkPair(pass *analysis.Pass, body *ast.BlockStmt, first, second ast.Stmt, between []ast.Stmt) {
+	adjacent := len(between) == 0
 	assign, ok := first.(*ast.AssignStmt)
 	if !ok || assign.Tok != token.DEFINE || len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
 		return
@@ -153,6 +156,12 @@ func checkPair(pass *analysis.Pass, body *ast.BlockStmt, first, second ast.Stmt,
 
 	useExpr, ok := literalSiblingUse(pass, call, obj)
 	if !ok {
+		return
+	}
+
+	// an intervening write to (or shadowing of) an operand of the initializer would change
+	// its value at the consumer — the temporary is load-bearing, not redundant
+	if astx.UnsafeToMovePast(pass, assign.Rhs[0], between) {
 		return
 	}
 
