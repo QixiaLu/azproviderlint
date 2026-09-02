@@ -1,3 +1,7 @@
+## Unreleased
+
+- plugin settings: `enable`/`disable` entries can name a whole category (`enable: [AZG]` runs every AZG rule); `disable` still applies after `enable`
+
 ## v0.5.1 (2026-09-02)
 
 - `AZG005`/`AZG006`: no longer report a temporary when a statement between the declaration and the consumer writes to, takes the address of, or shadows anything the initializer reads — the suggested fix inlined `oldKey := column[y]` past a `column[y] = ...` write, changing the value read

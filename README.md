@@ -59,7 +59,7 @@ linters:
         type: module
 ```
 
-Individual rules can be enabled/disabled via plugin settings (an empty `enable` list means all rules):
+Individual rules can be enabled/disabled via plugin settings (an empty `enable` list means all rules); an entry names a rule or a whole category (`AZG` matches every AZG rule), and `disable` is applied after `enable`:
 ```yaml
 linters:
   settings:
@@ -67,7 +67,8 @@ linters:
       azproviderlint:
         type: module
         settings:
-          disable: [AZR002]
+          enable: [AZG]         # only the AZG rules...
+          disable: [AZG005]     # ...except AZG005
 ```
 
 Some rules take options, set under a rule-name key in the same settings block (or `-<RULE>.<option>` on the standalone binary) — each rule's README documents its options:
