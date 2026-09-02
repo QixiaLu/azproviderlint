@@ -1,5 +1,6 @@
 ## Unreleased
 
+- add rule `AZG002`: single-use temporaries whose only use is taking their address (`v := "x"` then `&v`) should be `new(<expr>)` at the use site (Go 1.26); in the default new mode existing `pointer.To(x)` calls are also rewritten unless `allow: pointer.To`, `use: pointer.To` suggests the helper instead (required below go1.26 — new mode errors there), the initializer must be call-free and single-line, and `max-gap` bounds the distance (default 100); fixable with `-fix`
 - **breaking**: rename `AZG002` to `AZV001` — it polices validation error messages, not general Go style, so it moves to the reserved AZV validation category; update any `//azignore:AZG002` comments and settings references
 - plugin settings: `enable`/`disable` entries can name a whole category (`enable: [AZG]` runs every AZG rule); `disable` still applies after `enable`
 

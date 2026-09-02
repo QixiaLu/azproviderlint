@@ -177,6 +177,16 @@ func rootIdent(e ast.Expr) *ast.Ident {
 	}
 }
 
+// EnclosingFile returns the *ast.File containing pos.
+func EnclosingFile(pass *analysis.Pass, pos token.Pos) *ast.File {
+	for _, file := range pass.Files {
+		if file.FileStart <= pos && pos < file.FileEnd {
+			return file
+		}
+	}
+	return nil
+}
+
 // SourceText returns the raw source bytes of node.
 func SourceText(pass *analysis.Pass, node ast.Node) ([]byte, bool) {
 	tf := pass.Fset.File(node.Pos())
