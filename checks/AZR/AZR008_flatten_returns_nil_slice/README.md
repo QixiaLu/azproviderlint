@@ -1,14 +1,18 @@
-# AZR008 - flatten functions must return empty slices, not nil
+# AZR008 - flatten functions must return empty slices/maps, not nil
 
-The AZR008 analyzer reports `flatten*` functions that return `nil` for a slice result, where an empty slice (`[]T{}` or `make([]T, 0)`) should be returned instead.
+The AZR008 analyzer reports `flatten*` functions that return `nil` for a slice or map result instead of an empty container (`[]T{}`, `map[K]V{}`).
 
-Flatten helpers feed their result straight into schema state, and a nil slice is not interchangeable with an empty one: it can surface as a spurious plan diff or trigger a nil-map/slice assignment downstream. The nil-input guard that opens most flatten functions should therefore return an empty slice rather than `nil`.
+Flatten results feed straight into schema state, where a nil container is not interchangeable with an empty one: it can surface as a spurious plan diff or a nil assignment downstream.
 
-The check fires on any function whose name begins with `flatten` (case-insensitive) that declares one or more slice result types and returns `nil` in one of those slice positions — including the slice position of a multi-value return such as `([]T, error)`. Non-slice results (strings, pointers, `error`) are ignored, and `expand*` functions are out of scope since returning `nil` there is idiomatic.
+The check covers any `flatten*` function (case-insensitive) with slice or map results, named types included, and reports a position that is provably nil:
 
-Returns on an error path are skipped: a `return nil, err` (or `return nil, nil, err`, `return nil, fmt.Errorf(...)`) that carries a non-nil error value legitimately returns `nil` for the slice, so only returns whose error results are all `nil` (or absent) — the empty/nil-input branch — are reported.
+- a literal `nil`, including conversions like `[]T(nil)`
+- a naked `return` whose named container result has not been assigned yet
+- a variable that is still nil: a zero-value `var` or named result, unassigned before the return, address never taken
 
-The report carries a suggested fix, so `azproviderlint -AZR008 -fix` (or an editor applying the suggested fix) rewrites each offending `nil` into an empty composite literal of the declared slice type (`[]T{}`) automatically — every nil slice position in a single return is fixed at once.
+Error paths are skipped — `return nil, err` is legitimate — but only when the error can actually be non-nil, so `var noErr error; return nil, noErr` is still reported. Out of scope: pointers (`*T`, `*[]T`, `*map[K]V` — nil means absent), `interface{}` results (container shape undeclared), and `expand*` functions (nil is idiomatic there).
+
+Reports carry a suggested fix applied via `-fix`: nils become empty literals, naked returns become explicit (`return []T{}, err`), and a returned variable's now-unused declaration is deleted when safe.
 
 ## Flagged Code
 
@@ -19,6 +23,30 @@ func flattenNetworkACLs(input *NetworkRuleSet) []NetworkACLs {
 	}
 	// ...
 }
+
+func flattenTags(input *Resource) map[string]interface{} {
+	if input == nil {
+		return nil
+	}
+	// ...
+}
+
+// naked return: ret is still nil here
+func flattenReplicaSets(input *[]ReplicaSet) (ret []interface{}) {
+	if input == nil {
+		return
+	}
+	// ...
+}
+
+// out is provably still nil
+func flattenRules(input *RuleSet) []Rule {
+	var out []Rule
+	if input == nil {
+		return out
+	}
+	// ...
+}
 ```
 
 ## Passing Code
@@ -26,15 +54,23 @@ func flattenNetworkACLs(input *NetworkRuleSet) []NetworkACLs {
 ```go
 func flattenNetworkACLs(input *NetworkRuleSet) []NetworkACLs {
 	if input == nil {
-		return []NetworkACLs{}
+		return []NetworkACLs{} // or make([]NetworkACLs, 0)
 	}
 	// ...
 }
 
-// make is fine too
-func flattenNetworkACLs(input *NetworkRuleSet) []NetworkACLs {
+// error path: nil container is legitimate
+func flattenSku(input *Sku) ([]interface{}, error) {
+	if input.Name == nil {
+		return nil, fmt.Errorf("`name` was nil")
+	}
+	// ...
+}
+
+// nil pointer means absent, not empty
+func flattenOptionalTags(input *Resource) *map[string]string {
 	if input == nil {
-		return make([]NetworkACLs, 0)
+		return nil
 	}
 	// ...
 }

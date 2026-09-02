@@ -114,7 +114,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 | [AZR005](checks/AZR/AZR005_case_insensitive_segments_feature_flag) | do not set the case-insensitive segments feature flag |
 | [AZR006](checks/AZR/AZR006_stop_context_without_timeouts) | use timeouts wrappers, not StopContext |
 | [AZR007](checks/AZR/AZR007_state_change_conf_custom_poller) | use custom pollers instead of StateChangeConf |
-| [AZR008](checks/AZR/AZR008_flatten_returns_nil_slice) | flatten functions must return empty slices, not nil |
+| [AZR008](checks/AZR/AZR008_flatten_returns_nil_slice) | flatten functions must return empty slices/maps, not nil |
 
 ### AZD — Data Sources
 
