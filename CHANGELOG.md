@@ -1,12 +1,11 @@
-## Unreleased
+## v0.5.0 (2026-09-02)
 
-- `AZR008` now also covers map results, naked returns whose named container result is still unassigned, and returns of provably-nil variables (`var out []T; return out`) — and a provably-nil error value (`var noErr error`) no longer masks a finding as an error path
-
-- add rule `AZG006`: single-use variables only used as an argument of a later call should be inlined (`x := flattenThing(...)` then `d.Set("key", x)`); sibling arguments must be literals or plain identifiers, the initializer must be single-line, and `max-gap` bounds the distance (default 100); `only-when-literals` and `maximum-arguments` tighten the rule; fixable with `-fix`
+- `AZG005` now also flags temporaries consumed by a later statement in the same block, up to `max-gap` source lines away (default 100)
+- `AZR008` now also covers map results, naked returns with an unassigned named result, and provably-nil variables (`var out []T; return out`); a provably-nil error (`var noErr error`) no longer masks a finding as an error path
+- add rule `AZG006`: single-use variables only used as an argument of a later call should be inlined (`x := flattenThing(...)` then `d.Set("key", x)`); siblings must be literals or plain identifiers and the initializer single-line; tuned by `max-gap` (default 100), `only-when-literals`, and `maximum-arguments`; fixable with `-fix`
 
 ## v0.4.0 (2026-09-01)
 
-- `AZG005` now also flags temporaries consumed by a later statement in the same block, up to `max-gap` source lines away (default 100)
 - add rule `AZR008`: `flatten*` functions should return an empty slice (`[]T{}`) instead of `nil`; error paths (`return nil, err`) are exempt, and naked returns are out of scope; fixable with `-fix`
 - add rule `AZS007`: schema fields with both `Optional: true` and `Computed: true` must have a `// Note: O+C because ...` comment between the two fields explaining why; an `exclude-packages` setting skips listed package names (e.g. state-migration snapshot packages)
 
