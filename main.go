@@ -31,7 +31,7 @@ func main() {
 }
 
 // expandCategoryFlags rewrites category flags like -AZG into the individual rule flags of
-// that category (-AZG001 -AZG002 ...) before multichecker parses the command line.
+// that category (-AZG001 -AZG003 ...) before multichecker parses the command line.
 func expandCategoryFlags(args []string) []string {
 	byCategory := map[string][]string{}
 	for _, a := range checks.All {

@@ -1,4 +1,4 @@
-package AZG002
+package AZV001
 
 import (
 	"path/filepath"
@@ -8,11 +8,11 @@ import (
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
-func TestAZG002(t *testing.T) {
+func TestAZV001(t *testing.T) {
 	t.Parallel()
 
 	_, filename, _, _ := runtime.Caller(0)
 	dir := filepath.Join(filepath.Dir(filename), "testdata")
 
-	analysistest.Run(t, dir, Analyzer, "azg002")
+	analysistest.Run(t, dir, Analyzer, "azv001")
 }
