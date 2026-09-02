@@ -28,6 +28,14 @@ output.Format = pointer.From(input.Format)
 return buildName(input)
 ```
 
+## Options
+
+| Option | Default | Effect |
+|---|---|---|
+| `max-gap` | 100 | maximum source lines between the declaration and its consumer |
+
+Set via `-AZG005.<option>` on the CLI or a rule-name key in the plugin's golangci settings.
+
 ## Ignoring Reports
 
 A named temporary can be deliberate documentation of an otherwise opaque expression, so suppressions are expected where the name genuinely helps. When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:

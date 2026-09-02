@@ -32,3 +32,17 @@ if err := d.Set("apns_credential", flattenNotificationHubsAPNSCredentials(props.
 payload := expandThing(d)
 client.CreateOrUpdate(ctx, id, payload)
 ```
+
+## Options
+
+| Option | Default | Effect |
+|---|---|---|
+| `max-gap` | 100 | maximum source lines between the declaration and the consuming call |
+| `only-when-literals` | false | require every sibling argument to be a basic literal (plain identifiers are otherwise also accepted) |
+| `maximum-arguments` | 0 | skip calls with more than this many arguments (0 = unlimited) |
+
+Set via `-AZG006.<option>` on the CLI or a rule-name key in the plugin's golangci settings.
+
+## Ignoring Reports
+
+When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it. To ignore only this check on a line — leaving any other azproviderlint checks active — use `//azignore:AZG006 - <reason>` instead, in the same positions.

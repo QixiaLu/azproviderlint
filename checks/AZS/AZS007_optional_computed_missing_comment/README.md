@@ -49,6 +49,14 @@ azurerm's `pluginsdk` type aliases and the typed SDK resource pattern (`Argument
 
 The comment must match `// Note: O+C` (case-insensitive) and appear on a line strictly between `Optional:` and `Computed:` in the source. Multi-line O+C comments are supported, only the first line must match the pattern.
 
+## Options
+
+| Option | Default | Effect |
+|---|---|---|
+| `exclude-packages` | (empty) | comma-separated package names to skip entirely (e.g. state-migration snapshot packages) |
+
+Set via `-AZS007.<option>` on the CLI or a rule-name key in the plugin's golangci settings.
+
 ## Ignoring Reports
 
 When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:
