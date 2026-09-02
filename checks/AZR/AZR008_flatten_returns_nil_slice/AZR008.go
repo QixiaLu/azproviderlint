@@ -16,15 +16,12 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-// Analyzer checks that flatten* helpers return empty slices and maps instead of nil, on every
-// path that is not an error path: literal nils (including conversions like `[]T(nil)`), naked
-// returns whose named container result has not been assigned yet, and returns of a variable
-// that is provably still nil (a zero-value `var` declaration or named result with no prior
-// assignment and its address never taken). A value in a declared error position marks the
-// return as an error path — unless that value is itself provably nil, so `var noErr error;
-// return nil, noErr` does not slip through. Pointer results (`*T`, `*[]T`, `*map[K]V`) are
-// exempt since a nil pointer is a deliberate absent signal, and `interface{}` results are out
-// of scope since the container shape is not declared.
+// Analyzer checks that flatten* helpers return empty slices and maps instead of nil on
+// non-error paths. It catches literal nils (including conversions like `[]T(nil)`), naked
+// returns with still-unassigned named results, and variables that are provably still nil —
+// which also stops a nil error value (`var noErr error`) from masking a return as an error
+// path. Pointer results are exempt (nil is a deliberate absent signal) and `interface{}`
+// results are out of scope (the container shape is not declared).
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZR008",
 	Doc:      "check that flatten functions returning slices or maps return an empty container instead of nil",
