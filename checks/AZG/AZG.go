@@ -9,6 +9,7 @@ import (
 	AZG003 "github.com/katbyte/azproviderlint/checks/AZG/AZG003_pointer_to_enum_conversion"
 	AZG004 "github.com/katbyte/azproviderlint/checks/AZG/AZG004_zero_value_init_pointer_from"
 	AZG005 "github.com/katbyte/azproviderlint/checks/AZG/AZG005_single_use_temporary"
+	AZG006 "github.com/katbyte/azproviderlint/checks/AZG/AZG006_single_use_call_argument"
 	AZG007 "github.com/katbyte/azproviderlint/checks/AZG/AZG007_redundant_nil_pointer_field"
 )
 
@@ -19,5 +20,6 @@ var Checks = []*analysis.Analyzer{
 	AZG003.Analyzer,
 	AZG004.Analyzer,
 	AZG005.Analyzer,
+	AZG006.Analyzer,
 	AZG007.Analyzer,
 }

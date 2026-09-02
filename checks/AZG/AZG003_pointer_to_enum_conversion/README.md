@@ -1,4 +1,4 @@
-# AZG003
+# AZG003 - use pointer.ToEnum for enum conversions
 
 The AZG003 analyzer reports `pointer.To` calls that wrap an explicit [go-azure-sdk](https://github.com/hashicorp/go-azure-sdk) enum type conversion — `pointer.To(sdk.SomeEnum(v))` — where the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper from [go-azure-helpers](https://github.com/hashicorp/go-azure-helpers) should be used instead.
 

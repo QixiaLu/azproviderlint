@@ -1,4 +1,4 @@
-# AZG004
+# AZG004 - use pointer.From instead of nil-check dereference
 
 The AZG004 analyzer reports the manual `y := <zero>; if x != nil { y = *x }` idiom — a zero-value initialization immediately followed by a nil check that dereferences a pointer — where the generic `pointer.From(x)` helper from [go-azure-helpers](https://github.com/hashicorp/go-azure-helpers) should be used instead.
 

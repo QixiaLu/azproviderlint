@@ -1,4 +1,4 @@
-# AZS002
+# AZS002 - schema defaults must match the declared type
 
 The AZS002 analyzer reports `schema.Schema` declarations whose `Default` value's type does not match the declared `Type` — e.g. a `bool` default on a `schema.TypeInt` schema. The plugin SDK's `InternalValidate` does not type-check `Default`, so a mismatch only surfaces as an error at plan time.
 

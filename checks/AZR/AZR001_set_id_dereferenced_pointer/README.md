@@ -1,4 +1,4 @@
-# AZR001
+# AZR001 - SetId must use a resource id formatter/parser
 
 The AZR001 analyzer reports `SetId` being called with a dereferenced pointer, typically the raw Resource ID returned by the Azure API (`d.SetId(*read.ID)`).
 

@@ -1,4 +1,4 @@
-# AZC001
+# AZC001 - clients must set an explicit resource manager endpoint
 
 The AZC001 analyzer reports Azure SDK (track1 & kermit) clients being created with `NewFoosClient(o.SubscriptionId)`.
 

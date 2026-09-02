@@ -1,4 +1,4 @@
-# AZS006
+# AZS006 - data sources must expose all the resource's properties
 
 The AZS006 analyzer pairs every registered data source with the same-named registered resource and reports resource schema properties the data source does not expose anywhere. Data sources are meant to mirror their resource, and a property added to the resource but never plumbed into the data source is the usual way they drift apart.
 

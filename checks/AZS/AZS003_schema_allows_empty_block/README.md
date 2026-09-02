@@ -1,4 +1,4 @@
-# AZS003
+# AZS003 - optional blocks must not allow empty blocks
 
 The AZS003 analyzer reports `Type: schema.TypeList` blocks (Optional or Required) whose nested `Resource` schema contains only optional properties with no `Default`/`DefaultFunc` and no `AtLeastOneOf`/`ExactlyOneOf` constraint. Such schemas accept an empty block:
 
