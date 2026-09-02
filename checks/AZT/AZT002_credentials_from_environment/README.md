@@ -1,4 +1,4 @@
-# AZT002
+# AZT002 - acctests must not read credentials from the environment
 
 The AZT002 analyzer reports tests reading the provider's credentials from the environment via `os.Getenv("ARM_CLIENT_ID")`, `os.Getenv("ARM_CLIENT_SECRET")` or `os.Getenv("ARM_CLIENT_SECRET_ALT")`.
 

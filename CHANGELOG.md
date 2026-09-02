@@ -1,6 +1,13 @@
 ## Unreleased
 
-- add rule `AZS007`: detect `registration.go` `Registration` method map keys and slice elements that are not sorted alphabetically — entries assigned to a local variable and then returned are followed to their composite literal definition, and sections separated by blank lines or comment lines are validated independently so grouped registrations keep their sections; reports carry a suggested fix applied via `-fix` that reorders each unsorted section, moving every entry's trailing comment with it
+- add rule `AZG006`: single-use variables only used as an argument of a later call should be inlined (`x := flattenThing(...)` then `d.Set("key", x)`); sibling arguments must be literals or plain identifiers, the initializer must be single-line, and `max-gap` bounds the distance (default 100); `only-when-literals` and `maximum-arguments` tighten the rule; fixable with `-fix`
+- add rule `AZS008`: detect `registration.go` `Registration` method map keys and slice elements that are not sorted alphabetically — entries assigned to a local variable and then returned are followed to their composite literal definition, and sections separated by blank lines or comment lines are validated independently so grouped registrations keep their sections; reports carry a suggested fix applied via `-fix` that reorders each unsorted section, moving every entry's trailing comment with it
+
+## v0.4.0 (2026-09-01)
+
+- `AZG005` now also flags temporaries consumed by a later statement in the same block, up to `max-gap` source lines away (default 100)
+- add rule `AZR008`: `flatten*` functions should return an empty slice (`[]T{}`) instead of `nil`; error paths (`return nil, err`) are exempt, and naked returns are out of scope; fixable with `-fix`
+- add rule `AZS007`: schema fields with both `Optional: true` and `Computed: true` must have a `// Note: O+C because ...` comment between the two fields explaining why; an `exclude-packages` setting skips listed package names (e.g. state-migration snapshot packages)
 
 ## v0.3.2 (2026-08-28)
 

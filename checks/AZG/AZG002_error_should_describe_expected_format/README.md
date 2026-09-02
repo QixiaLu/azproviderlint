@@ -1,4 +1,4 @@
-# AZG002
+# AZG002 - 'invalid format' error messages must describe the expected format
 
 The AZG002 analyzer reports error messages containing `invalid format of ...`. These messages aren't descriptive - they tell the user something is wrong without telling them how to fix it. Error messages should describe the expected format instead.
 

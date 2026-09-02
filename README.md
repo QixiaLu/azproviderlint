@@ -95,31 +95,33 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 
 | Rule | Description |
 |------|-------------|
-| [AZG000](checks/AZG/AZG000_azignore_missing_reason) | `//azignore` directives must include a reason (`//azignore:AZR001 - <reason>`) documenting why the check does not apply — bare directives still suppress, but are themselves reported; disable this check to accept bare directives |
-| [AZG001](checks/AZG/AZG001_combine_err_assignment_and_check) | `err := SomeFunc()` or `_, err := SomeFunc()` followed by `if err != nil` should be combined into a single `if` init statement |
-| [AZG002](checks/AZG/AZG002_error_should_describe_expected_format) | Error messages should describe the expected format instead of saying `invalid format of ...` |
-| [AZG003](checks/AZG/AZG003_pointer_to_enum_conversion) | `pointer.To(sdk.SomeEnum(v))` explicit go-azure-sdk enum conversions must use the generic `pointer.ToEnum[sdk.SomeEnum](v)` helper instead |
-| [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | `y := <zero>; if x != nil { y = *x }` zero-value initialization followed by a nil check and pointer dereference must use the generic `pointer.From(x)` helper instead |
-| [AZG005](checks/AZG/AZG005_single_use_temporary) | `x := <expr>` immediately followed by `y = x` or `return x`, with no other use of `x`, should be inlined into the consuming statement |
+| [AZG000](checks/AZG/AZG000_azignore_missing_reason) | azignore directives must give a reason |
+| [AZG001](checks/AZG/AZG001_combine_err_assignment_and_check) | combine err assignment and check into one if |
+| [AZG002](checks/AZG/AZG002_error_should_describe_expected_format) | 'invalid format' error messages must describe the expected format |
+| [AZG003](checks/AZG/AZG003_pointer_to_enum_conversion) | use pointer.ToEnum for enum conversions |
+| [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | use pointer.From instead of nil-check dereference |
+| [AZG005](checks/AZG/AZG005_single_use_temporary) | inline single-use variable only used in a later assignment or return |
+| [AZG006](checks/AZG/AZG006_single_use_call_argument) | inline single-use variable only used in a later function call |
 
 ### AZR — Resource Implementation
 
 | Rule | Description |
 |------|-------------|
-| [AZR001](checks/AZR/AZR001_set_id_dereferenced_pointer) | `SetId` must not be passed a dereferenced pointer (`d.SetId(*read.ID)`) — use a generated Resource ID Formatter/Parser and `d.SetId(id.ID())` |
-| [AZR002](checks/AZR/AZR002_combined_create_update_method) | Resources must register separate `Create` and `Update` methods instead of a combined `CreateUpdate` method |
-| [AZR003](checks/AZR/AZR003_resource_data_get_in_delete) | `d.Get` / `metadata.ResourceData.Get` must not be used inside a resource's Delete function, where it does not work as expected |
-| [AZR004](checks/AZR/AZR004_resource_id_equality_comparison) | Resource IDs must not be compared with `==`/`!=` — use `resourceids.Match` |
-| [AZR005](checks/AZR/AZR005_case_insensitive_segments_feature_flag) | `features.TreatUserSpecifiedSegmentsAsCaseInsensitive` must not be set — the case-aware comparisons feature is not ready for use |
-| [AZR006](checks/AZR/AZR006_stop_context_without_timeouts) | `ctx` must not be assigned directly from `meta.(*clients.Client).StopContext` — use `timeouts.ForCreate`/`ForRead`/`ForUpdate`/`ForDelete` so Custom Timeouts work |
-| [AZR007](checks/AZR/AZR007_state_change_conf) | `StateChangeConf` from `github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry` must not be used — prefer a custom poller implementing `pollers.PollerType` driven via `pollers.NewPoller(...).PollUntilDone(ctx)` |
+| [AZR001](checks/AZR/AZR001_set_id_dereferenced_pointer) | SetId must use a resource id formatter/parser |
+| [AZR002](checks/AZR/AZR002_combined_create_update_method) | separate Create and Update methods |
+| [AZR003](checks/AZR/AZR003_resource_data_get_in_delete) | no d.Get in Delete functions |
+| [AZR004](checks/AZR/AZR004_resource_id_equality_comparison) | compare resource id types with resourceids.Match |
+| [AZR005](checks/AZR/AZR005_case_insensitive_segments_feature_flag) | do not set the case-insensitive segments feature flag |
+| [AZR006](checks/AZR/AZR006_stop_context_without_timeouts) | use timeouts wrappers, not StopContext |
+| [AZR007](checks/AZR/AZR007_state_change_conf_custom_poller) | use custom pollers instead of StateChangeConf |
+| [AZR008](checks/AZR/AZR008_flatten_returns_nil_slice) | flatten functions must return empty slices, not nil |
 
 ### AZD — Data Sources
 
 | Rule | Description |
 |------|-------------|
-| [AZD001](checks/AZD/AZD001_data_source_empty_set_id) | Data sources must return an error when a resource cannot be found, not call `d.SetId("")` |
-| [AZD002](checks/AZD/AZD002_data_source_mark_as_gone) | Data sources must return an error when a resource cannot be found, not call `metadata.MarkAsGone` |
+| [AZD001](checks/AZD/AZD001_data_source_empty_set_id) | data sources must error when not found, not SetId("") |
+| [AZD002](checks/AZD/AZD002_data_source_mark_as_gone) | data sources must error when not found, not MarkAsGone |
 
 ### AZS — Schema & Typed SDK Models
 
@@ -128,23 +130,24 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 | [AZS001](checks/AZS/AZS001_typed_sdk_model_64bit_types) | Typed SDK model fields (tagged `tfschema`) must use 64-bit numeric types — `int64` not `int`/`int16`/`int32`, `float64` not `float32` — including slices, maps, pointers, named types, and aliases of them |
 | [AZS002](checks/AZS/AZS002_schema_default_type_mismatch) | Schema `Default` values must match the declared `Type` — a `bool` default on a `TypeInt` schema only fails at plan time; named constants are resolved via the type checker |
 | [AZS003](checks/AZS/AZS003_schema_allows_empty_block) | Optional/required `TypeList` blocks whose properties are all optional with no defaults allow `foo {}`, which can crash expand functions or cause spurious diffs — constrain with `AtLeastOneOf`/`ExactlyOneOf`, a `Required` property, or a `Default` |
-| [AZS004](checks/AZS/AZS004_enum_validation_missing_values) | `validation.StringInSlice` with a hand-written list of SDK enum values must use the SDK's `PossibleValuesFor<Enum>()` helper instead — partial lists reject valid API values, and even complete lists go stale when the SDK adds new ones |
+| [AZS004](checks/AZS/AZS004_enum_validation_possible_values) | `validation.StringInSlice` with a hand-written list of SDK enum values must use the SDK's `PossibleValuesFor<Enum>()` helper instead — partial lists reject valid API values, and even complete lists go stale when the SDK adds new ones |
 | [AZS005](checks/AZS/AZS005_resource_missing_data_source) | Registered resources must have a data source of the same name — checked across untyped plugin SDK maps, typed SDK slices and framework wrapped slices, including feature-flagged conditional registration |
 | [AZS006](checks/AZS/AZS006_data_source_missing_properties) | Data sources must expose the properties of their same-named resource — compares recursively collected schema property names per registration flavour (untyped maps, typed `Arguments()`/`Attributes()`, framework `Schema()`) and reports resource properties absent from the data source |
-| [AZS007](checks/AZS/AZS007_registration_entries_sorted) | `registration.go` `Registration` method map keys and slice elements must be sorted alphabetically — validated per section split on blank lines or comment lines so grouped registrations keep their sections, following returned variables back to their composite literal definition |
+| [AZS007](checks/AZS/AZS007_optional_computed_missing_comment) | optional+computed fields must have a Note: O+C comment |
+| [AZS008](checks/AZS/AZS008_registration_entries_sorted) | `registration.go` `Registration` method map keys and slice elements must be sorted alphabetically — validated per section split on blank lines or comment lines so grouped registrations keep their sections, following returned variables back to their composite literal definition |
 
 ### AZC — Clients & SDK Usage
 
 | Rule | Description |
 |------|-------------|
-| [AZC001](checks/AZC/AZC001_client_missing_base_uri) | Azure SDK (track1 & kermit) clients must be created via `NewFoosClientWithBaseURI` with the resource manager endpoint explicitly specified, not `NewFoosClient(o.SubscriptionId)` |
+| [AZC001](checks/AZC/AZC001_client_missing_resource_manager_endpoint) | clients must set an explicit resource manager endpoint |
 
 ### AZT — Acceptance Testing
 
 | Rule | Description |
 |------|-------------|
-| [AZT001](checks/AZT/AZT001_acceptance_test_external_package) | Acceptance test files (resource, data source, action, ephemeral — incl. list and generated variants) must use an external `_test` package to prevent circular dependencies |
-| [AZT002](checks/AZT/AZT002_credentials_from_environment) | Tests (`_test.go` files only) must not obtain credentials via `os.Getenv("ARM_CLIENT_ID"/"ARM_CLIENT_SECRET"/"ARM_CLIENT_SECRET_ALT")` — create an `azurerm_user_assigned_identity` with minimal permissions instead |
+| [AZT001](checks/AZT/AZT001_acceptance_test_external_package) | acceptance tests must use a _test package |
+| [AZT002](checks/AZT/AZT002_credentials_from_environment) | acctests must not read credentials from the environment |
 
 ### AZN — Naming Conventions
 

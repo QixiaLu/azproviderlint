@@ -1,4 +1,4 @@
-# AZR002
+# AZR002 - separate Create and Update methods
 
 The AZR002 analyzer reports resources registering a combined `CreateUpdate` method as their `Create` function.
 

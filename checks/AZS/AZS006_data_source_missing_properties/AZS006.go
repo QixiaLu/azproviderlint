@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/katbyte/azproviderlint/lib/tf"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
@@ -124,7 +125,7 @@ func run(pass *analysis.Pass) (any, error) {
 
 		isResource := resourceMethods[fn.Name.Name]
 		isDataSource := dataSourceMethods[fn.Name.Name]
-		if (!isResource && !isDataSource) || !registrationReturnShape(pass, fn) {
+		if (!isResource && !isDataSource) || !tf.RegistrationReturnShape(pass, fn) {
 			return
 		}
 
@@ -521,40 +522,6 @@ func (c *collector) declOfCall(expr ast.Expr) *ast.FuncDecl {
 		}
 	}
 	return nil
-}
-
-// registrationReturnShape reports whether fn returns either a map[string]*Resource (untyped
-// registration) or a slice of a named Resource/DataSource/FrameworkWrapped* type.
-func registrationReturnShape(pass *analysis.Pass, fn *ast.FuncDecl) bool {
-	if fn.Type.Results == nil || len(fn.Type.Results.List) != 1 {
-		return false
-	}
-
-	ret := pass.TypesInfo.TypeOf(fn.Type.Results.List[0].Type)
-	switch t := types.Unalias(ret).(type) {
-	case *types.Map:
-		basic, ok := types.Unalias(t.Key()).(*types.Basic)
-		if !ok || basic.Kind() != types.String {
-			return false
-		}
-		ptr, ok := types.Unalias(t.Elem()).(*types.Pointer)
-		if !ok {
-			return false
-		}
-		named, ok := types.Unalias(ptr.Elem()).(*types.Named)
-		return ok && named.Obj().Name() == "Resource"
-	case *types.Slice:
-		named, ok := types.Unalias(t.Elem()).(*types.Named)
-		if !ok {
-			return false
-		}
-		switch named.Obj().Name() {
-		case "Resource", "DataSource", "FrameworkWrappedResource", "FrameworkWrappedDataSource":
-			return true
-		}
-	}
-
-	return false
 }
 
 // delegatesToRegistrationMethod reports whether expr is a call to another registration method

@@ -1,4 +1,4 @@
-# AZD002
+# AZD002 - data sources must error when not found, not MarkAsGone
 
 The AZD002 analyzer reports data sources calling `metadata.MarkAsGone(...)`.
 

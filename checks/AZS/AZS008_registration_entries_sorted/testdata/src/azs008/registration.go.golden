@@ -1,0 +1,206 @@
+package azs008
+
+import (
+	"github.com/example/provider/framework"
+	"github.com/example/provider/pluginsdk"
+	"github.com/example/provider/sdk"
+	"github.com/example/provider/typed"
+)
+
+type Registration struct{}
+
+func (r Registration) SupportedResources() map[string]*pluginsdk.Resource {
+	return map[string]*pluginsdk.Resource{
+		"azurerm_availability_set":    nil,
+		"azurerm_dedicated_host":      nil,
+		"azurerm_disk_encryption_set": nil,
+		"azurerm_managed_disk":        nil,
+		"azurerm_virtual_machine":     nil,
+	}
+}
+
+func (r Registration) SupportedDataSources() map[string]*pluginsdk.Resource {
+	return map[string]*pluginsdk.Resource{}
+}
+
+func (r Registration) InvalidSupportedResources() map[string]*pluginsdk.Resource {
+	return map[string]*pluginsdk.Resource{ // want `registration entries should be sorted alphabetically`
+		"azurerm_availability_set":    nil,
+		"azurerm_dedicated_host":      nil,
+		"azurerm_disk_encryption_set": nil,
+		"azurerm_managed_disk":        nil,
+		"azurerm_ssh_public_key":      nil,
+	}
+}
+
+// SupportedResourcesViaVariableNotReported is not reported: the map is built in a local variable
+// rather than returned directly, and only directly returned literals are checked.
+func (r Registration) SupportedResourcesViaVariableNotReported() map[string]*pluginsdk.Resource {
+	resources := map[string]*pluginsdk.Resource{
+		"azurerm_availability_set":    nil,
+		"azurerm_dedicated_host":      nil,
+		"azurerm_managed_disk":        nil,
+		"azurerm_disk_encryption_set": nil,
+		"azurerm_ssh_public_key":      nil,
+	}
+
+	return resources
+}
+
+func (r Registration) SectionedDataSources() map[string]*pluginsdk.Resource {
+	return map[string]*pluginsdk.Resource{
+		// CDN
+		"azurerm_cdn_profile": nil,
+
+		// FrontDoor
+		"azurerm_cdn_frontdoor_custom_domain": nil,
+		"azurerm_cdn_frontdoor_endpoint":      nil,
+		"azurerm_cdn_frontdoor_profile":       nil,
+	}
+}
+
+func (r Registration) InvalidSectionedDataSources() map[string]*pluginsdk.Resource {
+	return map[string]*pluginsdk.Resource{ // want `registration entries should be sorted alphabetically`
+		// CDN
+		"azurerm_cdn_profile": nil,
+
+		// FrontDoor
+		"azurerm_cdn_frontdoor_custom_domain": nil,
+		"azurerm_cdn_frontdoor_endpoint":      nil,
+		"azurerm_cdn_frontdoor_profile":       nil,
+	}
+}
+
+func (r Registration) Resources() []sdk.Resource {
+	return []sdk.Resource{
+		ApiManagementResource{},
+		WorkspaceResource{},
+	}
+}
+
+func (r Registration) InvalidResources() []sdk.Resource {
+	return []sdk.Resource{ // want `registration entries should be sorted alphabetically`
+		ApiManagementResource{},
+		WorkspaceResource{},
+	}
+}
+
+// ResourcesViaVariableNotReported is not reported: the slice is built in a local variable rather
+// than returned directly.
+func (r Registration) ResourcesViaVariableNotReported() []sdk.Resource {
+	resources := []sdk.Resource{
+		WorkspaceResource{},
+		ApiManagementResource{},
+	}
+
+	return resources
+}
+
+func (r Registration) InvalidPointerResources() []sdk.Resource {
+	return []sdk.Resource{ // want `registration entries should be sorted alphabetically`
+		&ApiManagementResource{},
+		&WorkspaceResource{},
+	}
+}
+
+func (r Registration) QualifiedResources() []sdk.Resource {
+	return []sdk.Resource{
+		typed.ComputeResource{},
+		typed.NetworkResource{},
+	}
+}
+
+func (r Registration) InvalidQualifiedResources() []sdk.Resource {
+	return []sdk.Resource{ // want `registration entries should be sorted alphabetically`
+		typed.ComputeResource{},
+		typed.NetworkResource{},
+	}
+}
+
+func (r Registration) FrameworkResources() []func() framework.Resource {
+	return []func() framework.Resource{
+		newApiManagementResource,
+		newWorkspaceResource,
+	}
+}
+
+func (r Registration) InvalidFrameworkResources() []func() framework.Resource {
+	return []func() framework.Resource{ // want `registration entries should be sorted alphabetically`
+		newApiManagementResource,
+		newWorkspaceResource,
+	}
+}
+
+func (r Registration) WebsiteCategories() []string {
+	return []string{
+		"Compute",
+		"Network",
+	}
+}
+
+func (r Registration) InvalidWebsiteCategories() []string {
+	return []string{ // want `registration entries should be sorted alphabetically`
+		"Compute",
+		"Network",
+	}
+}
+
+// CaseInsensitiveCategories is not reported: entries are ordered case-insensitively even though
+// their casing differs.
+func (r Registration) CaseInsensitiveCategories() []string {
+	return []string{
+		"apple",
+		"Banana",
+		"cherry",
+	}
+}
+
+func (r Registration) InvalidCaseInsensitiveCategories() []string {
+	return []string{ // want `registration entries should be sorted alphabetically`
+		"apple",
+		"Cherry",
+	}
+}
+
+// UnresolvableEntriesNotReported has an entry whose sort key cannot be resolved, so the whole
+// section is skipped rather than judged on the resolvable entries alone.
+func (r Registration) UnresolvableEntriesNotReported() []sdk.Resource {
+	return []sdk.Resource{
+		WorkspaceResource{},
+		makeResource("x"),
+		ApiManagementResource{},
+	}
+}
+
+// AppendedResourcesViaVariableNotReported is not reported: the slice is built in a local variable
+// and appended to before being returned, so it is not a directly returned literal.
+func (r Registration) AppendedResourcesViaVariableNotReported() []sdk.Resource {
+	resources := []sdk.Resource{
+		WorkspaceResource{},
+		ApiManagementResource{},
+	}
+
+	resources = append(resources, buildResources()...)
+
+	return resources
+}
+
+// BraceSharingNotFixed reports the unsorted entries but offers no auto-fix because the opening and
+// closing braces share entry lines and a whole-line rewrite would corrupt the source.
+func (r Registration) BraceSharingNotFixed() []sdk.Resource {
+	return []sdk.Resource{WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
+		ApiManagementResource{}}
+}
+
+type ApiManagementResource struct{}
+type WorkspaceResource struct{}
+
+func (ApiManagementResource) ResourceType() string { return "azurerm_api_management" }
+func (WorkspaceResource) ResourceType() string     { return "azurerm_workspace" }
+
+func newApiManagementResource() framework.Resource { return nil }
+func newWorkspaceResource() framework.Resource     { return nil }
+
+func makeResource(string) sdk.Resource { return nil }
+
+func buildResources() []sdk.Resource { return nil }

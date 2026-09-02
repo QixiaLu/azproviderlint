@@ -1,4 +1,4 @@
-# AZR005
+# AZR005 - do not set the case-insensitive segments feature flag
 
 The AZR005 analyzer reports assignments to the `features.TreatUserSpecifiedSegmentsAsCaseInsensitive` feature flag.
 
