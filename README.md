@@ -105,7 +105,6 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 |------|-------------|
 | [AZG000](checks/AZG/AZG000_azignore_missing_reason) | azignore directives must give a reason |
 | [AZG001](checks/AZG/AZG001_combine_err_assignment_and_check) | combine err assignment and check into one if |
-| [AZG002](checks/AZG/AZG002_error_should_describe_expected_format) | 'invalid format' error messages must describe the expected format |
 | [AZG003](checks/AZG/AZG003_pointer_to_enum_conversion) | use pointer.ToEnum for enum conversions |
 | [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | use pointer.From instead of nil-check dereference |
 | [AZG005](checks/AZG/AZG005_single_use_temporary) | inline single-use variable only used in a later assignment or return |
@@ -162,7 +161,9 @@ _No rules yet — reserved for property naming convention rules (e.g. percentage
 
 ### AZV — Validation
 
-_No rules yet — reserved for missing/incorrect validation rules (e.g. string arguments without a `ValidateFunc`)._
+| Rule | Description |
+|------|-------------|
+| [AZV001](checks/AZV/AZV001_error_should_describe_expected_format) | 'invalid format' error messages must describe the expected format |
 
 ## Ignoring Reports
 

@@ -1,5 +1,6 @@
 ## Unreleased
 
+- **breaking**: rename `AZG002` to `AZV001` — it polices validation error messages, not general Go style, so it moves to the reserved AZV validation category; update any `//azignore:AZG002` comments and settings references
 - plugin settings: `enable`/`disable` entries can name a whole category (`enable: [AZG]` runs every AZG rule); `disable` still applies after `enable`
 
 ## v0.5.1 (2026-09-02)
