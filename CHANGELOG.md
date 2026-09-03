@@ -1,5 +1,6 @@
 ## Unreleased
 
+- `AZS008`: report each unsorted section at its first out-of-order entry, naming the keys — `//azignore:AZS008` now scopes to one section instead of the whole method; fixes also move a comment attached to the first entry together with it
 - `AZS008`: also check generated `registration_gen.go` files (`autoRegistration` receiver); an unsorted one means the generator needs fixing; `generated: false` skips them
 - add rule `AZS008`: `registration.go` map keys and slice elements must be sorted alphabetically; sections split on blank lines/headings sort independently, variable-then-return literals are followed, trailing comments travel with their entry; fixable with `-fix` ([#23](https://github.com/katbyte/azproviderlint/pull/23))
 

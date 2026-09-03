@@ -13,10 +13,10 @@ func (autoRegistration) Resources() []sdk.Resource {
 	}
 }
 
-func (autoRegistration) InvalidResources() []sdk.Resource { // want `registration entries should be sorted alphabetically`
+func (autoRegistration) InvalidResources() []sdk.Resource {
 	return []sdk.Resource{
 		WorkspaceResource{},
-		ApiManagementResource{},
+		ApiManagementResource{}, // want `registration entries should be sorted alphabetically`
 	}
 }
 
