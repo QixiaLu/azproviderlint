@@ -112,3 +112,46 @@ func invalidLaterConsumer(in input, out *output) {
 	out.Names = []string{"a"}
 	out.Format = from(in.Format)
 }
+
+func mutate(*input) {}
+
+// Should NOT be flagged: an intervening statement overwrites an element the initializer reads
+// — inlining would read column[y] after the write.
+func validInterveningElementWrite(column []string, y int) string {
+	oldKey := column[y]
+	column[y] = "overwritten"
+	return oldKey
+}
+
+// Should NOT be flagged: an intervening statement reassigns an operand of the initializer.
+func validInterveningOperandWrite(in input, out *output) {
+	format := from(in.Format)
+	in = input{}
+	out.Format = format
+}
+
+// Should NOT be flagged: an intervening statement increments an operand of the initializer.
+func validInterveningIncDec(column []string, y int) string {
+	oldKey := column[y]
+	y++
+	return oldKey
+}
+
+// Should NOT be flagged: an intervening statement takes an operand's address, which the
+// callee may write through.
+func validInterveningAddressTaken(in input, out *output) {
+	format := from(in.Format)
+	mutate(&in)
+	out.Format = format
+}
+
+// Should NOT be flagged: an intervening declaration shadows an operand, so inlining would
+// rebind the name.
+func validInterveningShadow(in input, out *output) {
+	if out != nil {
+		format := from(in.Format)
+		in := input{}
+		_ = in
+		out.Format = format
+	}
+}

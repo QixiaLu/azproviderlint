@@ -59,7 +59,7 @@ linters:
         type: module
 ```
 
-Individual rules can be enabled/disabled via plugin settings (an empty `enable` list means all rules):
+Individual rules can be enabled/disabled via plugin settings (an empty `enable` list means all rules); an entry names a rule or a whole category (`AZG` matches every AZG rule), and `disable` is applied after `enable`:
 ```yaml
 linters:
   settings:
@@ -67,7 +67,15 @@ linters:
       azproviderlint:
         type: module
         settings:
-          disable: [AZR002]
+          enable: [AZG]         # only the AZG rules...
+          disable: [AZG005]     # ...except AZG005
+```
+
+Some rules take options, set under a rule-name key in the same settings block (or `-<RULE>.<option>` on the standalone binary) — each rule's README documents its options:
+```yaml
+        settings:
+          AZS004: {allow-extra-values: true}
+          AZG005: {max-gap: 50}
 ```
 
 To run just azproviderlint through the custom binary, skipping every other linter:
@@ -97,7 +105,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 |------|-------------|
 | [AZG000](checks/AZG/AZG000_azignore_missing_reason) | azignore directives must give a reason |
 | [AZG001](checks/AZG/AZG001_combine_err_assignment_and_check) | combine err assignment and check into one if |
-| [AZG002](checks/AZG/AZG002_error_should_describe_expected_format) | 'invalid format' error messages must describe the expected format |
+| [AZG002](checks/AZG/AZG002_address_of_single_use_temporary) | use new() instead of a single-use temporary's address |
 | [AZG003](checks/AZG/AZG003_pointer_to_enum_conversion) | use pointer.ToEnum for enum conversions |
 | [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | use pointer.From instead of nil-check dereference |
 | [AZG005](checks/AZG/AZG005_single_use_temporary) | inline single-use variable only used in a later assignment or return |
@@ -114,7 +122,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 | [AZR005](checks/AZR/AZR005_case_insensitive_segments_feature_flag) | do not set the case-insensitive segments feature flag |
 | [AZR006](checks/AZR/AZR006_stop_context_without_timeouts) | use timeouts wrappers, not StopContext |
 | [AZR007](checks/AZR/AZR007_state_change_conf_custom_poller) | use custom pollers instead of StateChangeConf |
-| [AZR008](checks/AZR/AZR008_flatten_returns_nil_slice) | flatten functions must return empty slices, not nil |
+| [AZR008](checks/AZR/AZR008_flatten_returns_nil_slice) | flatten functions must return empty slices/maps, not nil |
 
 ### AZD — Data Sources
 
@@ -155,7 +163,9 @@ _No rules yet — reserved for property naming convention rules (e.g. percentage
 
 ### AZV — Validation
 
-_No rules yet — reserved for missing/incorrect validation rules (e.g. string arguments without a `ValidateFunc`)._
+| Rule | Description |
+|------|-------------|
+| [AZV001](checks/AZV/AZV001_error_should_describe_expected_format) | 'invalid format' error messages must describe the expected format |
 
 ## Ignoring Reports
 

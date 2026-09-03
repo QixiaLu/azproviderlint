@@ -23,11 +23,13 @@ const (
 )
 
 // Settings allows rules to be enabled/disabled per-rule from .golangci.yml via
-// linters.settings.custom.azproviderlint.settings. An empty enable list means all rules.
-// Any other top-level key must be a rule name and sets that rule's analyzer flags:
+// linters.settings.custom.azproviderlint.settings. An empty enable list means all rules. A
+// list entry names either a rule (AZS006) or a whole category (AZG — a rule name with the
+// digits stripped, matching every rule in it). Any other top-level key must be a rule name
+// and sets that rule's analyzer flags:
 //
 //	settings:
-//	  enable: [AZS006]
+//	  enable: [AZG, AZS006]
 //	  AZS006:
 //	    ignore-sensitive: true
 type Settings struct {
@@ -85,12 +87,15 @@ func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	// (viper) lowercases YAML map keys, so the rule-name keys carrying flag values arrive
 	// as "azs004" no matter how the config spells them.
 	known := make(map[string]bool, len(checks.All))
+	categories := map[string]bool{}
 	for _, a := range checks.All {
 		known[strings.ToLower(a.Name)] = true
+		categories[strings.ToLower(category(a.Name))] = true
 	}
+	// enable/disable entries may name a rule or a category; flag keys must name a rule
 	for _, name := range slices.Concat(p.settings.Enable, p.settings.Disable) {
-		if !known[strings.ToLower(name)] {
-			return nil, fmt.Errorf("unknown azproviderlint rule %q in settings", name)
+		if l := strings.ToLower(name); !known[l] && !categories[l] {
+			return nil, fmt.Errorf("unknown azproviderlint rule or category %q in settings", name)
 		}
 	}
 	flags := make(map[string]map[string]string, len(p.settings.Flags))
@@ -104,7 +109,9 @@ func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	analyzers := make([]*analysis.Analyzer, 0, len(checks.All))
 	for _, a := range checks.All {
 		listed := func(list []string) bool {
-			return slices.ContainsFunc(list, func(name string) bool { return strings.EqualFold(name, a.Name) })
+			return slices.ContainsFunc(list, func(name string) bool {
+				return strings.EqualFold(name, a.Name) || strings.EqualFold(name, category(a.Name))
+			})
 		}
 		if len(p.settings.Enable) > 0 && !listed(p.settings.Enable) {
 			continue
@@ -121,6 +128,12 @@ func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	}
 
 	return analyzers, nil
+}
+
+// category returns the rule family a rule name belongs to: its name with the trailing digits
+// stripped (AZS006 -> AZS).
+func category(name string) string {
+	return strings.TrimRight(name, "0123456789")
 }
 
 func (p *Plugin) GetLoadMode() string {
