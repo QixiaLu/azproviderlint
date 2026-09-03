@@ -110,6 +110,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 | [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | use pointer.From instead of nil-check dereference |
 | [AZG005](checks/AZG/AZG005_single_use_temporary) | inline single-use variable only used in a later assignment or return |
 | [AZG006](checks/AZG/AZG006_single_use_call_argument) | inline single-use variable only used in a later function call |
+| [AZG007](checks/AZG/AZG007_redundant_zero_value_field) | omit struct literal fields explicitly set to their zero value |
 
 ### AZR — Resource Implementation
 
