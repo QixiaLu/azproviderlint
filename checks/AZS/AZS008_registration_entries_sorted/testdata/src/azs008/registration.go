@@ -23,9 +23,9 @@ func (r Registration) SupportedDataSources() map[string]*pluginsdk.Resource {
 	return map[string]*pluginsdk.Resource{}
 }
 
-func (r Registration) InvalidSupportedResources() map[string]*pluginsdk.Resource {
+func (r Registration) InvalidSupportedResources() map[string]*pluginsdk.Resource { // want `registration entries should be sorted alphabetically`
 	return map[string]*pluginsdk.Resource{
-		"azurerm_availability_set":    nil, // want `registration entries should be sorted alphabetically`
+		"azurerm_availability_set":    nil,
 		"azurerm_dedicated_host":      nil,
 		"azurerm_managed_disk":        nil,
 		"azurerm_disk_encryption_set": nil,
@@ -33,7 +33,7 @@ func (r Registration) InvalidSupportedResources() map[string]*pluginsdk.Resource
 	}
 }
 
-func (r Registration) SupportedResourcesViaVariable() map[string]*pluginsdk.Resource {
+func (r Registration) SupportedResourcesViaVariable() map[string]*pluginsdk.Resource { // want `registration entries should be sorted alphabetically`
 	lookup := map[string]string{
 		"z": "last",
 		"a": "first",
@@ -41,7 +41,7 @@ func (r Registration) SupportedResourcesViaVariable() map[string]*pluginsdk.Reso
 	_ = lookup
 
 	resources := map[string]*pluginsdk.Resource{
-		"azurerm_availability_set":    nil, // want `registration entries should be sorted alphabetically`
+		"azurerm_availability_set":    nil,
 		"azurerm_dedicated_host":      nil,
 		"azurerm_managed_disk":        nil,
 		"azurerm_disk_encryption_set": nil,
@@ -63,13 +63,13 @@ func (r Registration) SectionedDataSources() map[string]*pluginsdk.Resource {
 	}
 }
 
-func (r Registration) InvalidSectionedDataSources() map[string]*pluginsdk.Resource {
+func (r Registration) InvalidSectionedDataSources() map[string]*pluginsdk.Resource { // want `registration entries should be sorted alphabetically`
 	return map[string]*pluginsdk.Resource{
 		// CDN
 		"azurerm_cdn_profile": nil,
 
 		// FrontDoor
-		"azurerm_cdn_frontdoor_profile":       nil, // want `registration entries should be sorted alphabetically`
+		"azurerm_cdn_frontdoor_profile":       nil,
 		"azurerm_cdn_frontdoor_custom_domain": nil,
 		"azurerm_cdn_frontdoor_endpoint":      nil,
 	}
@@ -82,25 +82,25 @@ func (r Registration) Resources() []sdk.Resource {
 	}
 }
 
-func (r Registration) InvalidResources() []sdk.Resource {
+func (r Registration) InvalidResources() []sdk.Resource { // want `registration entries should be sorted alphabetically`
 	return []sdk.Resource{
-		WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
+		WorkspaceResource{},
 		ApiManagementResource{},
 	}
 }
 
-func (r Registration) ResourcesViaVariable() []sdk.Resource {
+func (r Registration) ResourcesViaVariable() []sdk.Resource { // want `registration entries should be sorted alphabetically`
 	resources := []sdk.Resource{
-		WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
+		WorkspaceResource{},
 		ApiManagementResource{},
 	}
 
 	return resources
 }
 
-func (r Registration) InvalidPointerResources() []sdk.Resource {
+func (r Registration) InvalidPointerResources() []sdk.Resource { // want `registration entries should be sorted alphabetically`
 	return []sdk.Resource{
-		&WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
+		&WorkspaceResource{},
 		&ApiManagementResource{},
 	}
 }
@@ -112,9 +112,9 @@ func (r Registration) QualifiedResources() []sdk.Resource {
 	}
 }
 
-func (r Registration) InvalidQualifiedResources() []sdk.Resource {
+func (r Registration) InvalidQualifiedResources() []sdk.Resource { // want `registration entries should be sorted alphabetically`
 	return []sdk.Resource{
-		typed.NetworkResource{}, // want `registration entries should be sorted alphabetically`
+		typed.NetworkResource{},
 		typed.ComputeResource{},
 	}
 }
@@ -126,9 +126,9 @@ func (r Registration) FrameworkResources() []func() framework.Resource {
 	}
 }
 
-func (r Registration) InvalidFrameworkResources() []func() framework.Resource {
+func (r Registration) InvalidFrameworkResources() []func() framework.Resource { // want `registration entries should be sorted alphabetically`
 	return []func() framework.Resource{
-		newWorkspaceResource, // want `registration entries should be sorted alphabetically`
+		newWorkspaceResource,
 		newApiManagementResource,
 	}
 }
@@ -140,9 +140,9 @@ func (r Registration) WebsiteCategories() []string {
 	}
 }
 
-func (r Registration) InvalidWebsiteCategories() []string {
+func (r Registration) InvalidWebsiteCategories() []string { // want `registration entries should be sorted alphabetically`
 	return []string{
-		"Network", // want `registration entries should be sorted alphabetically`
+		"Network",
 		"Compute",
 	}
 }
@@ -157,18 +157,30 @@ func (r Registration) CaseInsensitiveCategories() []string {
 	}
 }
 
-func (r Registration) InvalidCaseInsensitiveCategories() []string {
+func (r Registration) InvalidCaseInsensitiveCategories() []string { // want `registration entries should be sorted alphabetically`
 	return []string{
-		"Cherry", // want `registration entries should be sorted alphabetically`
+		"Cherry",
 		"apple",
 	}
 }
 
-func (r Registration) AttachedEntryComment() []string {
+func (r Registration) AttachedEntryComment() []string { // want `registration entries should be sorted alphabetically`
 	return []string{
 		"cherry",
 		// zebra is special
-		"zebra", // want `registration entries should be sorted alphabetically`
+		"zebra",
+		"apple",
+	}
+}
+
+// BlankLineCommentStartsSection: a comment with a blank line before it starts a new section even
+// when a blank line also follows it, so these single-entry sections are each sorted and not flagged.
+func (r Registration) BlankLineCommentStartsSection() []string {
+	return []string{
+		"zebra",
+
+		// heading
+
 		"apple",
 	}
 }
@@ -183,9 +195,9 @@ func (r Registration) UnresolvableEntriesNotReported() []sdk.Resource {
 	}
 }
 
-func (r Registration) AppendedResourcesViaVariable() []sdk.Resource {
+func (r Registration) AppendedResourcesViaVariable() []sdk.Resource { // want `registration entries should be sorted alphabetically`
 	resources := []sdk.Resource{
-		WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
+		WorkspaceResource{},
 		ApiManagementResource{},
 	}
 
@@ -196,25 +208,25 @@ func (r Registration) AppendedResourcesViaVariable() []sdk.Resource {
 
 // BraceSharingNotFixed reports the unsorted entries but offers no auto-fix because the opening and
 // closing braces share entry lines and a whole-line rewrite would corrupt the source.
-func (r Registration) BraceSharingNotFixed() []sdk.Resource {
-	return []sdk.Resource{WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
+func (r Registration) BraceSharingNotFixed() []sdk.Resource { // want `registration entries should be sorted alphabetically`
+	return []sdk.Resource{WorkspaceResource{},
 		ApiManagementResource{}}
 }
 
 // PartiallyFixableSections leaves the same-line section unchanged and fixes the safe section.
-func (r Registration) PartiallyFixableSections() []string {
+func (r Registration) PartiallyFixableSections() []string { // want `registration entries should be sorted alphabetically`
 	return []string{
-		"zebra", "apple", // want `registration entries should be sorted alphabetically`
+		"zebra", "apple",
 
-		"dog", // want `registration entries should be sorted alphabetically`
+		"dog",
 		"cat",
 	}
 }
 
 // SpanningBlockCommentNotFixed cannot be safely reordered by whole source lines.
-func (r Registration) SpanningBlockCommentNotFixed() []string {
+func (r Registration) SpanningBlockCommentNotFixed() []string { // want `registration entries should be sorted alphabetically`
 	return []string{
-		/* want `registration entries should be sorted alphabetically` */ "zebra", /* note
+		"zebra", /* note
 		spanning */"apple",
 	}
 }

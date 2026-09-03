@@ -17,7 +17,7 @@ import (
 
 // Analyzer checks that map and slice literals matching the result types of `Registration` methods
 // in registration.go files are sorted alphabetically. Entries grouped into sections separated by
-// blank or comment lines are validated within each section independently.
+// blank lines or heading comments are validated within each section independently.
 var Analyzer = &analysis.Analyzer{
 	Name: "AZS008",
 	Doc:  "check that registration.go map and slice entries are sorted alphabetically",
@@ -83,6 +83,8 @@ func analyzeRegistrationMethod(pass *analysis.Pass, file *ast.File, funcDecl *as
 		return
 	}
 
+	var unsorted bool
+	var edits []analysis.TextEdit
 	ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
 		if _, ok := n.(*ast.FuncLit); ok {
 			return false
@@ -99,17 +101,34 @@ func analyzeRegistrationMethod(pass *analysis.Pass, file *ast.File, funcDecl *as
 		}
 		for result := range signature.Results().Variables() {
 			if types.Identical(literalType, result.Type()) {
-				validateSorting(pass, file, compositeLit)
+				literalUnsorted, literalEdits := validateSorting(pass, file, compositeLit)
+				unsorted = unsorted || literalUnsorted
+				edits = append(edits, literalEdits...)
 				break
 			}
 		}
 		return true
 	})
+
+	if unsorted {
+		diagnostic := analysis.Diagnostic{
+			Pos:     funcDecl.Name.Pos(),
+			Message: "registration entries should be sorted alphabetically",
+		}
+		if len(edits) > 0 {
+			diagnostic.SuggestedFixes = []analysis.SuggestedFix{{
+				Message:   "Sort registration entries alphabetically",
+				TextEdits: edits,
+			}}
+		}
+		pass.Report(diagnostic)
+	}
 }
 
-// splitIntoSections groups composite-literal elements into sections separated by blank or comment
-// lines: a gap of more than one source line between adjacent elements starts a new section.
-func splitIntoSections(fset *token.FileSet, elts []ast.Expr) [][]ast.Expr {
+// splitIntoSections groups composite-literal elements into sections separated by blank lines or
+// heading comments. A heading comment has a blank line before it; a comment with no blank line
+// before it remains attached to the following entry.
+func splitIntoSections(fset *token.FileSet, comments []*ast.CommentGroup, elts []ast.Expr) [][]ast.Expr {
 	if len(elts) == 0 {
 		return nil
 	}
@@ -118,9 +137,7 @@ func splitIntoSections(fset *token.FileSet, elts []ast.Expr) [][]ast.Expr {
 	current := []ast.Expr{elts[0]}
 
 	for i := 1; i < len(elts); i++ {
-		prevEnd := fset.Position(elts[i-1].End()).Line
-		currStart := fset.Position(elts[i].Pos()).Line
-		if currStart-prevEnd > 1 {
+		if startsSection(fset, comments, elts[i-1], elts[i]) {
 			sections = append(sections, current)
 			current = []ast.Expr{elts[i]}
 		} else {
@@ -131,16 +148,40 @@ func splitIntoSections(fset *token.FileSet, elts []ast.Expr) [][]ast.Expr {
 	return append(sections, current)
 }
 
-// validateSorting reports a composite literal whose entries are unsorted, checking each
-// blank- or comment-separated section independently.
-func validateSorting(pass *analysis.Pass, file *ast.File, compositeLit *ast.CompositeLit) {
+// startsSection reports whether current begins a new section: it follows a blank line, or a
+// standalone comment that has a blank line before it (a heading). A comment with no blank line
+// before it is attached to the following entry and does not start a section.
+func startsSection(fset *token.FileSet, comments []*ast.CommentGroup, previous, current ast.Expr) bool {
+	previousEnd := fset.Position(previous.End()).Line
+	currentStart := fset.Position(current.Pos()).Line
+
+	for _, comment := range comments {
+		if comment.Pos() <= previous.End() || comment.End() >= current.Pos() {
+			continue
+		}
+
+		commentStart := fset.Position(comment.Pos()).Line
+		if commentStart <= previousEnd {
+			continue // trailing comment on the previous entry's line
+		}
+
+		// The first standalone comment starts a section only when a blank line precedes it.
+		return commentStart > previousEnd+1
+	}
+
+	return currentStart > previousEnd+1
+}
+
+// validateSorting checks each section independently and returns whether any section is unsorted,
+// along with edits for sections that can be safely rewritten.
+func validateSorting(pass *analysis.Pass, file *ast.File, compositeLit *ast.CompositeLit) (bool, []analysis.TextEdit) {
 	if compositeLit.Type == nil {
-		return
+		return false, nil
 	}
 
 	typ := pass.TypesInfo.TypeOf(compositeLit)
 	if typ == nil {
-		return
+		return false, nil
 	}
 
 	var isMap bool
@@ -149,10 +190,12 @@ func validateSorting(pass *analysis.Pass, file *ast.File, compositeLit *ast.Comp
 		isMap = true
 	case *types.Slice:
 	default:
-		return
+		return false, nil
 	}
 
-	sections := splitIntoSections(pass.Fset, compositeLit.Elts)
+	sections := splitIntoSections(pass.Fset, file.Comments, compositeLit.Elts)
+	unsorted := false
+	var edits []analysis.TextEdit
 
 	for _, section := range sections {
 		names := make([]string, 0, len(section))
@@ -172,13 +215,14 @@ func validateSorting(pass *analysis.Pass, file *ast.File, compositeLit *ast.Comp
 		}
 
 		if !sort.SliceIsSorted(names, func(i, j int) bool { return lessFold(names[i], names[j]) }) {
-			pass.Report(analysis.Diagnostic{
-				Pos:            section[0].Pos(),
-				Message:        "registration entries should be sorted alphabetically",
-				SuggestedFixes: sortFix(pass, file, compositeLit, section, isMap),
-			})
+			unsorted = true
+			for _, fix := range sortFix(pass, file, compositeLit, section, isMap) {
+				edits = append(edits, fix.TextEdits...)
+			}
 		}
 	}
+
+	return unsorted, edits
 }
 
 // sortFix builds a suggested fix for one unsorted section when it can be safely rewritten.
@@ -211,8 +255,7 @@ func sortFix(pass *analysis.Pass, file *ast.File, compositeLit *ast.CompositeLit
 	if hasSpanningComment(file.Comments, tf, section) {
 		return nil
 	}
-	leadingComment := attachedLeadingComment(file.Comments, tf, compositeLit, section[0])
-	edit, ok := sortSectionEdit(tf, content, section, leadingComment, isMap)
+	edit, ok := sortSectionEdit(tf, content, file.Comments, compositeLit, section, isMap)
 	if !ok {
 		return nil
 	}
@@ -241,17 +284,17 @@ func hasSpanningComment(comments []*ast.CommentGroup, tf *token.File, section []
 
 // attachedLeadingComment returns a comment directly between two entries with no blank lines. Such
 // a comment is treated as part of the following entry so a suggested fix moves them together.
-func attachedLeadingComment(comments []*ast.CommentGroup, tf *token.File, compositeLit *ast.CompositeLit, first ast.Expr) *ast.CommentGroup {
+func attachedLeadingComment(comments []*ast.CommentGroup, tf *token.File, compositeLit *ast.CompositeLit, entry ast.Expr) *ast.CommentGroup {
 	for i := 1; i < len(compositeLit.Elts); i++ {
-		if compositeLit.Elts[i] != first {
+		if compositeLit.Elts[i] != entry {
 			continue
 		}
 
 		previous := compositeLit.Elts[i-1]
 		for _, comment := range comments {
-			if comment.Pos() > previous.End() && comment.End() < first.Pos() &&
+			if comment.Pos() > previous.End() && comment.End() < entry.Pos() &&
 				tf.Line(comment.Pos()) == tf.Line(previous.End())+1 &&
-				tf.Line(first.Pos()) == tf.Line(comment.End())+1 {
+				tf.Line(entry.Pos()) == tf.Line(comment.End())+1 {
 				return comment
 			}
 		}
@@ -263,7 +306,7 @@ func attachedLeadingComment(comments []*ast.CommentGroup, tf *token.File, compos
 
 // sortSectionEdit produces a text edit reordering one section's entries alphabetically. Each
 // entry is copied as the whole source lines it spans, so its attached comments move with it.
-func sortSectionEdit(tf *token.File, content []byte, section []ast.Expr, leadingComment *ast.CommentGroup, isMap bool) (analysis.TextEdit, bool) {
+func sortSectionEdit(tf *token.File, content []byte, comments []*ast.CommentGroup, compositeLit *ast.CompositeLit, section []ast.Expr, isMap bool) (analysis.TextEdit, bool) {
 	type block struct {
 		key  string
 		text []byte
@@ -279,7 +322,7 @@ func sortSectionEdit(tf *token.File, content []byte, section []ast.Expr, leading
 		}
 
 		startLine := tf.Line(elt.Pos())
-		if i == 0 && leadingComment != nil {
+		if leadingComment := attachedLeadingComment(comments, tf, compositeLit, elt); leadingComment != nil {
 			startLine = tf.Line(leadingComment.Pos())
 		}
 		endLine := tf.Line(elt.End())
