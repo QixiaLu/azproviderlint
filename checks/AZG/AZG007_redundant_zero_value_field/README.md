@@ -4,9 +4,9 @@ The AZG007 analyzer reports struct literal fields explicitly initialised to thei
 
 Slices, maps, and interfaces are deliberately left alone: an explicit `nil` there can be a readable, intentional signal, and omitting it is not always equivalent in intent. Zero values written as a named constant (`Mode: ModeNone`) are also left alone, since the name documents intent and omitting the field would lose that.
 
-Only literal zero values are flagged, so non-idiomatic forms such as `-0.0` or `'\x00'` are not caught; this can be revisited if a real case comes up.
+Any compile-time-constant zero is flagged, however it is spelled — `0`, `-0.0`, `'\x00'`, `int64(0)`, `""`, `false` — unless the expression names a constant (`Mode: ModeNone`, `N: int64(ZeroCount)`), since the name documents intent.
 
-The report carries a suggested fix, so `azproviderlint -AZG007 -fix` (or an editor applying the suggested fix) removes the redundant field — along with its trailing comma and any trailing comment — automatically, leaving gofmt to tidy up the surrounding whitespace.
+The report carries a suggested fix, so `azproviderlint -AZG007 -fix` (or an editor applying the suggested fix) removes the redundant field — along with its trailing comma and any trailing comment — automatically, leaving gofmt to tidy up the surrounding whitespace. A field with a standalone comment directly above it is reported without a fix: deleting the field would re-attach the comment to the next one, so a person decides whether to drop the field, keep it, or convert the comment to an `//azignore:AZG007 - <reason>`.
 
 ## Flagged Code
 

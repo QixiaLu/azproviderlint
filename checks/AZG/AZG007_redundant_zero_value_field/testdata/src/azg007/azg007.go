@@ -130,3 +130,38 @@ func validNonZero() *Settings {
 func validOmitted() *Config {
 	return &Config{}
 }
+
+// Extremes exercises zero values spelled indirectly.
+type Extremes struct {
+	F float64
+	R rune
+	N int64
+}
+
+const ZeroCount = 0
+
+// Should be flagged: constant zeros spelled indirectly — negative zero, zero rune, conversion.
+func invalidConstantZeroForms() *Extremes {
+	return &Extremes{
+		F: -0.0,     // want `redundant zero-value assignment to field "F" - omit the field`
+		R: '\x00',   // want `redundant zero-value assignment to field "R" - omit the field`
+		N: int64(0), // want `redundant zero-value assignment to field "N" - omit the field`
+	}
+}
+
+// Should NOT be flagged: a named constant, even through a conversion, documents intent.
+func validNamedConstantConversion() *Extremes {
+	return &Extremes{
+		N: int64(ZeroCount),
+	}
+}
+
+// Should be flagged but WITHOUT a fix: deleting the field would re-attach the lead comment
+// to the next field.
+func invalidLeadCommentNoFix() *Config {
+	return &Config{
+		// name deliberately unset
+		Name:    nil, // want `redundant nil assignment to pointer field "Name" - omit the field`
+		Options: &Options{},
+	}
+}

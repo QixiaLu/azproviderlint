@@ -1,4 +1,4 @@
-# AZS008
+# AZS008 - registration entries must be sorted alphabetically
 
 The AZS008 analyzer reports `Registration` methods containing map or slice entries that are not sorted alphabetically (case-insensitively). Each unsorted section is reported separately at its first out-of-order entry, naming the keys ("`azurerm_disk_encryption_set` should come before `azurerm_managed_disk`"), so an `//azignore:AZS008` on one intentionally-ordered section leaves the rest of the method enforced.
 

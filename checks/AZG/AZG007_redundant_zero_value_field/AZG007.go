@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/constant"
-	"go/token"
 	"go/types"
 	"strings"
 
@@ -79,32 +78,54 @@ func run(pass *analysis.Pass) (any, error) {
 					continue
 				}
 
-				// Delete the element up to the start of the next one (or the closing brace for
-				// the last element), which takes the trailing comma and any trailing comment
-				// with it; gofmt collapses the leftover whitespace afterwards.
-				end := compositeLit.Rbrace
-				if i+1 < len(compositeLit.Elts) {
-					end = compositeLit.Elts[i+1].Pos()
-				}
+				diagnostic := analysis.Diagnostic{Pos: kv.Pos(), Message: message}
 
-				// A comment on a later line than this field leads the following field, so stop
-				// the deletion before it; a same-line trailing comment stays inside the span.
-				eltLine := pass.Fset.Position(elt.End()).Line
+				// A standalone comment directly above the field often explains why it is set;
+				// deleting the field would re-attach it to the next one, so report without a
+				// fix and let a person decide (or convert the comment to an azignore).
+				prevEnd := compositeLit.Lbrace
+				if i > 0 {
+					prevEnd = compositeLit.Elts[i-1].End()
+				}
+				prevLine := pass.Fset.Position(prevEnd).Line
+				kvLine := pass.Fset.Position(kv.Pos()).Line
+				leadComment := false
 				for _, cg := range commentGroups {
-					if cg.Pos() > elt.End() && cg.Pos() < end && pass.Fset.Position(cg.Pos()).Line > eltLine {
-						end = cg.Pos()
+					if cg.Pos() > prevEnd && cg.End() < kv.Pos() &&
+						pass.Fset.Position(cg.Pos()).Line > prevLine &&
+						pass.Fset.Position(cg.End()).Line == kvLine-1 {
+						leadComment = true
 						break
 					}
 				}
 
-				pass.Report(analysis.Diagnostic{
-					Pos:     kv.Pos(),
-					Message: message,
-					SuggestedFixes: []analysis.SuggestedFix{{
+				if !leadComment {
+					// Delete the element up to the start of the next one (or the closing brace
+					// for the last element), which takes the trailing comma and any trailing
+					// comment with it; gofmt collapses the leftover whitespace afterwards.
+					end := compositeLit.Rbrace
+					if i+1 < len(compositeLit.Elts) {
+						end = compositeLit.Elts[i+1].Pos()
+					}
+
+					// A comment on a later line than this field leads the following field, so
+					// stop the deletion before it; a same-line trailing comment stays inside
+					// the span.
+					eltLine := pass.Fset.Position(elt.End()).Line
+					for _, cg := range commentGroups {
+						if cg.Pos() > elt.End() && cg.Pos() < end && pass.Fset.Position(cg.Pos()).Line > eltLine {
+							end = cg.Pos()
+							break
+						}
+					}
+
+					diagnostic.SuggestedFixes = []analysis.SuggestedFix{{
 						Message:   "Remove the redundant field",
 						TextEdits: []analysis.TextEdit{{Pos: kv.Pos(), End: end}},
-					}},
-				})
+					}}
+				}
+
+				pass.Report(diagnostic)
 			}
 
 			return true
@@ -125,36 +146,45 @@ func redundantZeroMessage(pass *analysis.Pass, fieldType types.Type, value ast.E
 			return fmt.Sprintf("redundant nil assignment to pointer field %q - omit the field", name)
 		}
 	case *types.Basic:
-		if isBasicZeroLit(pass, underlying, value) {
+		if isRedundantZero(pass, underlying, value) {
 			return fmt.Sprintf("redundant zero-value assignment to field %q - omit the field", name)
 		}
 	}
 	return ""
 }
 
-// isBasicZeroLit reports whether value is a literal zero value for the given basic type: the
-// predeclared `false` for booleans, an empty string literal for strings, and a `0` numeric
-// literal for numeric types. Named constants that happen to be zero (`Type: TypeNone`) return
-// false, since the name documents intent and omitting the field would lose that.
-func isBasicZeroLit(pass *analysis.Pass, basic *types.Basic, value ast.Expr) bool {
+// isRedundantZero reports whether value is a compile-time zero for the basic field type — `0`,
+// `-0.0`, `'\x00'`, `int64(0)`, `""`, `false` — written without naming a constant. Any
+// reference to a named (non-predeclared) constant keeps the field: a zero spelled `TypeNone`
+// documents intent, and omitting the field would lose that.
+func isRedundantZero(pass *analysis.Pass, basic *types.Basic, value ast.Expr) bool {
+	cv := pass.TypesInfo.Types[value].Value
+	if cv == nil || cv.Kind() == constant.Unknown {
+		return false
+	}
+
+	named := false
+	ast.Inspect(value, func(n ast.Node) bool {
+		if id, ok := n.(*ast.Ident); ok {
+			if c, ok := pass.TypesInfo.Uses[id].(*types.Const); ok && c.Pkg() != nil {
+				named = true
+			}
+		}
+		return !named
+	})
+	if named {
+		return false
+	}
+
 	switch info := basic.Info(); {
 	case info&types.IsBoolean != 0:
-		ident, ok := value.(*ast.Ident)
-		return ok && pass.TypesInfo.Uses[ident] == types.Universe.Lookup("false")
+		return cv.Kind() == constant.Bool && !constant.BoolVal(cv)
 	case info&types.IsString != 0:
-		lit, ok := value.(*ast.BasicLit)
-		if !ok || lit.Kind != token.STRING {
-			return false
-		}
-		cv := pass.TypesInfo.Types[value].Value
-		return cv != nil && constant.StringVal(cv) == ""
+		return cv.Kind() == constant.String && constant.StringVal(cv) == ""
+	case info&types.IsComplex != 0:
+		return constant.Sign(constant.Real(cv)) == 0 && constant.Sign(constant.Imag(cv)) == 0
 	case info&types.IsNumeric != 0:
-		lit, ok := value.(*ast.BasicLit)
-		if !ok || (lit.Kind != token.INT && lit.Kind != token.FLOAT && lit.Kind != token.IMAG) {
-			return false
-		}
-		cv := pass.TypesInfo.Types[value].Value
-		return cv != nil && constant.Sign(cv) == 0
+		return constant.Sign(cv) == 0
 	}
 	return false
 }
