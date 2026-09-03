@@ -11,6 +11,7 @@ import (
 	AZG005 "github.com/katbyte/azproviderlint/checks/AZG/AZG005_single_use_temporary"
 	AZG006 "github.com/katbyte/azproviderlint/checks/AZG/AZG006_single_use_call_argument"
 	AZG007 "github.com/katbyte/azproviderlint/checks/AZG/AZG007_redundant_zero_value_field"
+	AZG008 "github.com/katbyte/azproviderlint/checks/AZG/AZG008_unchecked_nil_dereference"
 )
 
 // Checks contains all AZG (general Go style & readability) analyzers.
@@ -22,4 +23,5 @@ var Checks = []*analysis.Analyzer{
 	AZG005.Analyzer,
 	AZG006.Analyzer,
 	AZG007.Analyzer,
+	AZG008.Analyzer,
 }
