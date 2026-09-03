@@ -1,10 +1,7 @@
 ## Unreleased
 
 - add rule `AZG008`: explicit pointer dereferences (`*props.Status`) must have a reachable nil guard — an enclosing `x != nil` condition, an `if x == nil` early exit, a provably non-nil source, an `err`/`ok` companion check, or an alias of a guarded chain (engine in `lib/nilguard`); bare parameter derefs trusted unless `include-parameters`, `_test.go` checked unless `tests=false`; fixes to `pointer.From`/`pointer.FromEnum` (`fix-with: none` disables) ([#31](https://github.com/katbyte/azproviderlint/pull/31))
-
-- `AZG007`: flag any constant zero however spelled (`-0.0`, `'\x00'`, `int64(0)`) unless it names a constant; report without a fix when a standalone comment directly precedes the field, so applying fixes cannot re-home the comment
 - add rule `AZG007`: struct literal fields explicitly set to their zero value (`Selector: nil`, `Name: ""`, `Count: 0`, `Enabled: false`) should be omitted; slices/maps/interfaces and named-constant zeros are left alone, `tests` (default false) opts into test files; fixable with `-fix` ([#24](https://github.com/katbyte/azproviderlint/pull/24))
-- `AZS008`: report each unsorted section at its first out-of-order entry, naming the keys — `//azignore:AZS008` now scopes to one section instead of the whole method; fixes also move a comment attached to the first entry together with it
 - `AZS008`: also check generated `registration_gen.go` files (`autoRegistration` receiver); an unsorted one means the generator needs fixing; `generated: false` skips them
 - add rule `AZS008`: `registration.go` map keys and slice elements must be sorted alphabetically; sections split on blank lines/headings sort independently, variable-then-return literals are followed, trailing comments travel with their entry; fixable with `-fix` ([#23](https://github.com/katbyte/azproviderlint/pull/23))
 
