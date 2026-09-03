@@ -1,0 +1,18 @@
+package azg002pointerto
+
+import (
+	"strings"
+
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
+)
+
+type widget struct {
+	name *string
+}
+
+// Should be flagged: the fix must add the pointer import, opening a new section after the
+// standard-library imports.
+func noImportAddressOf(s string) *widget {
+	upper := strings.ToUpper(s)
+	return &widget{name: pointer.To(upper + "!")}
+}

@@ -105,6 +105,7 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 |------|-------------|
 | [AZG000](checks/AZG/AZG000_azignore_missing_reason) | azignore directives must give a reason |
 | [AZG001](checks/AZG/AZG001_combine_err_assignment_and_check) | combine err assignment and check into one if |
+| [AZG002](checks/AZG/AZG002_address_of_single_use_temporary) | use new() instead of a single-use temporary's address |
 | [AZG003](checks/AZG/AZG003_pointer_to_enum_conversion) | use pointer.ToEnum for enum conversions |
 | [AZG004](checks/AZG/AZG004_zero_value_init_pointer_from) | use pointer.From instead of nil-check dereference |
 | [AZG005](checks/AZG/AZG005_single_use_temporary) | inline single-use variable only used in a later assignment or return |
