@@ -41,6 +41,14 @@ func dataSourceExample() *pluginsdk.Resource {
 }
 ```
 
+## Options
+
+| Option | Default | Effect |
+|---|---|---|
+| `ignore-sensitive` | false | exempt resource properties marked `Sensitive: true` |
+
+Set via `-AZS006.<option>` on the CLI or a rule-name key in the plugin's golangci settings.
+
 ## Ignoring Reports
 
 Some resource properties have no meaningful data source form (write-only credentials, create-only inputs), so suppressions are expected. When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:

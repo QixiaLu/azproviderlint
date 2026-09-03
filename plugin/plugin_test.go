@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/katbyte/azproviderlint/checks"
@@ -65,6 +66,46 @@ func TestBuildAnalyzersEnable(t *testing.T) {
 	}
 	if len(names) != 2 || names[0] != "AZS001" || names[1] != "AZT001" {
 		t.Fatalf("expected exactly [AZS001 AZT001], got %v", names)
+	}
+}
+
+func TestBuildAnalyzersEnableCategory(t *testing.T) {
+	t.Parallel()
+
+	names, err := buildAnalyzers(t, map[string]any{"enable": []string{"AZG"}, "disable": []string{"AZG005"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(names) == 0 {
+		t.Fatal("expected the AZG rules")
+	}
+	for _, name := range names {
+		if !strings.HasPrefix(name, "AZG") {
+			t.Fatalf("expected only AZG rules, got %v", names)
+		}
+		if name == "AZG005" {
+			t.Fatal("AZG005 should have been disabled")
+		}
+	}
+	if !slices.Contains(names, "AZG001") {
+		t.Fatalf("expected AZG001 in %v", names)
+	}
+}
+
+func TestBuildAnalyzersDisableCategory(t *testing.T) {
+	t.Parallel()
+
+	names, err := buildAnalyzers(t, map[string]any{"disable": []string{"azt"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range names {
+		if strings.HasPrefix(name, "AZT") {
+			t.Fatalf("expected no AZT rules, got %v", names)
+		}
+	}
+	if len(names) == len(checks.All) {
+		t.Fatal("expected the AZT rules to be removed")
 	}
 }
 

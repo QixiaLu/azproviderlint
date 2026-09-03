@@ -1,0 +1,93 @@
+package azg002
+
+type Enum string
+
+type props struct {
+	Name    *string
+	Count   *int
+	Enabled *bool
+}
+
+func use(interface{}) {}
+
+func newName() string { return "x" }
+
+// Should be flagged: the temporary's only use is its address in the next statement's return.
+func invalidReturn() *string {
+	return new("hello")
+}
+
+// Should be flagged: the address is a composite literal field value.
+func invalidField() props {
+	return props{Name: new("hello")}
+}
+
+// Should be flagged: the address is assigned to a struct field.
+func invalidAssign(p *props) {
+	p.Count = new(3)
+}
+
+// Should be flagged: the address is a call argument.
+func invalidCallArg() {
+	use(new(true))
+}
+
+// Should be flagged: the address is taken two statements later, within max-gap.
+func invalidLater(p *props) {
+	use(p)
+	p.Name = new("x")
+}
+
+// Should be flagged: a conversion initializer is side-effect free.
+func invalidConversion(s string) *Enum {
+	return new(Enum(s))
+}
+
+// Should NOT be flagged: the initializer calls a function, so inlining would move the call
+// past the intervening statements' effects.
+func validCallInitializer() *string {
+	name := newName()
+	return &name
+}
+
+// Should NOT be flagged: the variable is used beyond the address-of.
+func validSecondUse(p *props) {
+	name := "x"
+	use(name)
+	p.Name = &name
+}
+
+// Should NOT be flagged: the variable is reassigned before its address is taken.
+func validReassigned(p *props) {
+	name := "x"
+	name = "y"
+	p.Name = &name
+}
+
+// Should NOT be flagged: an intervening statement writes to an operand of the initializer.
+func validInterveningWrite(p *props, s string) {
+	name := s + "!"
+	s = "changed"
+	p.Name = &name
+}
+
+// Should NOT be flagged: the address is captured by a function literal, which defers the
+// initializer's evaluation to whenever the closure runs.
+func validClosureCapture() {
+	name := "x"
+	defer func() { use(&name) }()
+}
+
+// Should NOT be flagged: multi-line initializers are out of scope.
+func validMultiLine() *[]string {
+	parts := []string{
+		"a",
+	}
+	return &parts
+}
+
+// Should NOT be flagged: a channel receive in the initializer is a side effect.
+func validReceive(ch chan string, p *props) {
+	name := <-ch
+	p.Name = &name
+}

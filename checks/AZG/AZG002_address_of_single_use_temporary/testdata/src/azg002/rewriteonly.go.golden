@@ -1,0 +1,11 @@
+package azg002
+
+import (
+	"strings"
+)
+
+// Should be flagged: the only pointer reference is the rewritten call, so the fix also
+// deletes the import.
+func rewriteDropsImport(s string) *string {
+	return new(strings.ToUpper(s)) // want `pointer\.To should be replaced with the new\(\.\.\.\) builtin`
+}

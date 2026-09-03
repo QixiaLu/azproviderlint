@@ -40,6 +40,15 @@ linters:
             allow-extra-values: true
 ```
 
+## Options
+
+| Option | Default | Effect |
+|---|---|---|
+| `allow-missing-values` | false | do not report lists that are a deliberate subset of the enum |
+| `allow-extra-values` | false | do not report lists carrying values that are not part of the enum |
+
+Set via `-AZS004.<option>` on the CLI or a rule-name key in the plugin's golangci settings.
+
 ## Ignoring Reports
 
 A deliberately unsupported subset of an enum is a legitimate reason to suppress this check. When run via golangci-lint, reports can be ignored with a `//nolint:azproviderlint` Go code comment at the end of the offending line or on the line immediately preceding it:

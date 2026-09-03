@@ -11,6 +11,7 @@ import (
 	"github.com/katbyte/azproviderlint/checks/AZR"
 	"github.com/katbyte/azproviderlint/checks/AZS"
 	"github.com/katbyte/azproviderlint/checks/AZT"
+	"github.com/katbyte/azproviderlint/checks/AZV"
 	"github.com/katbyte/azproviderlint/checks/azignore"
 )
 
@@ -25,4 +26,5 @@ var All = append(azignore.Wrap(slices.Concat(
 	AZR.Checks,
 	AZS.Checks,
 	AZT.Checks,
+	AZV.Checks,
 )), AZG000.Analyzer)

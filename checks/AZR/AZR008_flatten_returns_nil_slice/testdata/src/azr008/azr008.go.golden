@@ -135,10 +135,11 @@ func flattenWithClosure(input *NetworkRuleSet) []NetworkACLs {
 	return []NetworkACLs{{Name: "test"}}
 }
 
-// Should NOT be flagged: naked returns are intentionally out of scope
+// Should be flagged: a naked return whose named slice result has not been assigned yet
+// returns a nil slice; the later naked return, after the assignment, is fine.
 func flattenNakedReturn(input *NetworkRuleSet) (ret []NetworkACLs) {
 	if input == nil {
-		return
+		return []NetworkACLs{} // want `flatten function "flattenNakedReturn" should return an empty slice instead of nil`
 	}
 	ret = []NetworkACLs{{Name: "test"}}
 	return
@@ -152,3 +153,94 @@ func flattenConvertedNil(input *NetworkRuleSet) ([]NetworkACLs, error) {
 	}
 	return []NetworkACLs{}, nil
 }
+
+// Should be flagged: a nil map result is the same disease as a nil slice.
+func flattenTagsMap(input *NetworkRuleSet) map[string]interface{} {
+	if input == nil {
+		return map[string]interface{}{} // want `flatten function "flattenTagsMap" should return an empty map instead of nil`
+	}
+	return map[string]interface{}{}
+}
+
+// Should NOT be flagged: a nil map pointer is a deliberate absent signal.
+func flattenPointerMap(input *NetworkRuleSet) *map[string]interface{} {
+	if input == nil {
+		return nil
+	}
+	return &map[string]interface{}{}
+}
+
+// Should be flagged: both container positions are nil, message names both kinds.
+func flattenMixedKinds(input *NetworkRuleSet) ([]NetworkACLs, map[string]string) {
+	if input == nil {
+		return []NetworkACLs{}, map[string]string{} // want `flatten function "flattenMixedKinds" should return an empty slice/map instead of nil`
+	}
+	return []NetworkACLs{}, map[string]string{}
+}
+
+// Should be flagged: a naked return on the nil-input guard with an unassigned error position
+// is not an error path; the fix keeps the error name in place.
+func flattenNakedWithError(input *NetworkRuleSet) (ret []NetworkACLs, err error) {
+	if input == nil {
+		return []NetworkACLs{}, err // want `flatten function "flattenNakedWithError" should return an empty slice instead of nil`
+	}
+	ret = []NetworkACLs{{Name: "test"}}
+	return
+}
+
+// Should NOT be flagged: the error was assigned before the naked return, so it is an error path.
+func flattenNakedErrorPath(input *NetworkRuleSet, fail func() error) (ret []NetworkACLs, err error) {
+	err = fail()
+	if err != nil {
+		return
+	}
+	ret = []NetworkACLs{{Name: "test"}}
+	return
+}
+
+// Should be flagged: the returned variable is provably still nil at the guard; the later
+// return, after the append, is fine.
+func flattenVarStillNil(input *NetworkRuleSet) []NetworkACLs {
+	var out []NetworkACLs
+	if input == nil {
+		return []NetworkACLs{} // want `flatten function "flattenVarStillNil" should return an empty slice instead of nil`
+	}
+	out = append(out, NetworkACLs{Name: "test"})
+	return out
+}
+
+// Should be flagged: the variable's only use is the return, so the fix also deletes the
+// declaration line.
+func flattenVarOnlyUse(input *NetworkRuleSet) []NetworkACLs {
+	return []NetworkACLs{} // want `flatten function "flattenVarOnlyUse" should return an empty slice instead of nil`
+}
+
+// Should be flagged without a fix: the declaration also declares another variable, so it
+// cannot be deleted safely.
+func flattenVarSharedDecl(input *NetworkRuleSet) []NetworkACLs {
+	var out, other []NetworkACLs
+	_ = other
+	return out // want `flatten function "flattenVarSharedDecl" should return an empty slice instead of nil`
+}
+
+// Should be flagged: a declared-but-nil error value does not make this an error path.
+func flattenNilErrVar(input *NetworkRuleSet) ([]NetworkACLs, error) {
+	var noErr error
+	if input == nil {
+		return []NetworkACLs{}, noErr // want `flatten function "flattenNilErrVar" should return an empty slice instead of nil`
+	}
+	return []NetworkACLs{}, noErr
+}
+
+// Should NOT be flagged: a parameter is caller-supplied, not provably nil.
+func flattenPassthrough(acls []NetworkACLs) []NetworkACLs {
+	return acls
+}
+
+// Should NOT be flagged: the variable's address is taken, so nothing is provable.
+func flattenAddressTaken(input *NetworkRuleSet, fill func(*[]NetworkACLs)) []NetworkACLs {
+	var out []NetworkACLs
+	fill(&out)
+	return out
+}
+

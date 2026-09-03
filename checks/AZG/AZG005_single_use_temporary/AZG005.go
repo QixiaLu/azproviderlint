@@ -26,7 +26,9 @@ import (
 // The consuming statement must be `y = x` (single pair, plain `=`) or `return x`; call
 // arguments are deliberately out of scope since naming an argument is usually intentional
 // documentation. Assignments whose left-hand side contains a function call are skipped, since
-// inlining would reorder the call relative to the temporary's initializer.
+// inlining would reorder the call relative to the temporary's initializer. Nothing is reported
+// when an intervening statement writes to, takes the address of, or shadows anything the
+// initializer reads — there the temporary preserves a value the intervening code changes.
 var Analyzer = &analysis.Analyzer{
 	Name:     "AZG005",
 	Doc:      "check for single-use temporaries immediately consumed by the next statement that should be inlined",
@@ -95,7 +97,7 @@ func run(pass *analysis.Pass) (any, error) {
 					if pass.Fset.Position(stmts[j].Pos()).Line-declEnd > maxGap {
 						break
 					}
-					checkPair(pass, body, stmts[i], stmts[j], j == i+1)
+					checkPair(pass, body, stmts[i], stmts[j], stmts[i+1:j])
 				}
 			}
 			return true
@@ -106,7 +108,8 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 // checkPair reports first when it declares a single-use temporary that second consumes.
-func checkPair(pass *analysis.Pass, body *ast.BlockStmt, first, second ast.Stmt, adjacent bool) {
+func checkPair(pass *analysis.Pass, body *ast.BlockStmt, first, second ast.Stmt, between []ast.Stmt) {
+	adjacent := len(between) == 0
 	assign, ok := first.(*ast.AssignStmt)
 	if !ok || assign.Tok != token.DEFINE || len(assign.Lhs) != 1 || len(assign.Rhs) != 1 {
 		return
@@ -124,6 +127,12 @@ func checkPair(pass *analysis.Pass, body *ast.BlockStmt, first, second ast.Stmt,
 
 	useExpr, ok := consumesAsBareValue(pass, second, obj)
 	if !ok {
+		return
+	}
+
+	// an intervening write to (or shadowing of) an operand of the initializer would change
+	// its value at the consumer — the temporary is load-bearing, not redundant
+	if astx.UnsafeToMovePast(pass, assign.Rhs[0], between) {
 		return
 	}
 
