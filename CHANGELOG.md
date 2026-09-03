@@ -1,9 +1,8 @@
-## Unreleased
+## v0.7.0 (2026-09-03)
 
-- add rule `AZG008`: explicit pointer dereferences (`*props.Status`) must have a reachable nil guard — an enclosing `x != nil` condition, an `if x == nil` early exit, a provably non-nil source, an `err`/`ok` companion check, or an alias of a guarded chain (engine in `lib/nilguard`); bare parameter derefs trusted unless `include-parameters`, `_test.go` checked unless `tests=false`; fixes to `pointer.From`/`pointer.FromEnum` (`fix-with: none` disables) ([#31](https://github.com/katbyte/azproviderlint/pull/31))
-- add rule `AZG007`: struct literal fields explicitly set to their zero value (`Selector: nil`, `Name: ""`, `Count: 0`, `Enabled: false`) should be omitted; slices/maps/interfaces and named-constant zeros are left alone, `tests` (default false) opts into test files; fixable with `-fix` ([#24](https://github.com/katbyte/azproviderlint/pull/24))
-- `AZS008`: also check generated `registration_gen.go` files (`autoRegistration` receiver); an unsorted one means the generator needs fixing; `generated: false` skips them
-- add rule `AZS008`: `registration.go` map keys and slice elements must be sorted alphabetically; sections split on blank lines/headings sort independently, variable-then-return literals are followed, trailing comments travel with their entry; fixable with `-fix` ([#23](https://github.com/katbyte/azproviderlint/pull/23))
+- add rule `AZG008`: pointer dereferences (`*props.Status`) must have a reachable nil guard; fixes to `pointer.From`/`pointer.FromEnum`; options `include-parameters`, `tests`, `fix-with` ([#31](https://github.com/katbyte/azproviderlint/pull/31))
+- add rule `AZG007`: struct literal fields set to their zero value should be omitted (named-constant zeros are kept); fixable with `-fix`; `tests` opts into test files ([#24](https://github.com/katbyte/azproviderlint/pull/24))
+- add rule `AZS008`: `registration.go` entries must be sorted alphabetically, checked per section; fixable with `-fix`; `generated: false` skips `registration_gen.go` ([#23](https://github.com/katbyte/azproviderlint/pull/23))
 
 ## v0.6.0 (2026-09-02)
 
