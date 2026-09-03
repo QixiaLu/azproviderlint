@@ -13,43 +13,35 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
-	"golang.org/x/tools/go/analysis/passes/inspect"
-	"golang.org/x/tools/go/ast/inspector"
 )
 
-// Analyzer checks that map and slice entries returned directly by `Registration` methods in
-// registration.go files are sorted alphabetically. Entries grouped into sections separated by
+// Analyzer checks that map and slice literals matching the result types of `Registration` methods
+// in registration.go files are sorted alphabetically. Entries grouped into sections separated by
 // blank or comment lines are validated within each section independently.
 var Analyzer = &analysis.Analyzer{
-	Name:     "AZS008",
-	Doc:      "check that registration.go map and slice entries are sorted alphabetically",
-	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZS/AZS008_registration_entries_sorted/README.md",
-	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run:      run,
+	Name: "AZS008",
+	Doc:  "check that registration.go map and slice entries are sorted alphabetically",
+	URL:  "https://github.com/katbyte/azproviderlint/blob/main/checks/AZS/AZS008_registration_entries_sorted/README.md",
+	Run:  run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	insp, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	if !ok {
-		return nil, nil
+	for _, file := range pass.Files {
+		if filepath.Base(pass.Fset.Position(file.Pos()).Filename) != "registration.go" {
+			continue
+		}
+
+		for _, decl := range file.Decls {
+			funcDecl, ok := decl.(*ast.FuncDecl)
+			if !ok {
+				continue
+			}
+
+			if hasRegistrationReceiver(funcDecl) {
+				analyzeRegistrationMethod(pass, file, funcDecl)
+			}
+		}
 	}
-
-	insp.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(n ast.Node) {
-		funcDecl, ok := n.(*ast.FuncDecl)
-		if !ok {
-			return
-		}
-
-		if filepath.Base(pass.Fset.Position(funcDecl.Pos()).Filename) != "registration.go" {
-			return
-		}
-
-		if !hasRegistrationReceiver(funcDecl) {
-			return
-		}
-
-		analyzeRegistrationMethod(pass, funcDecl)
-	})
 
 	return nil, nil
 }
@@ -75,22 +67,40 @@ func hasRegistrationReceiver(funcDecl *ast.FuncDecl) bool {
 	return typeName == "Registration"
 }
 
-// analyzeRegistrationMethod validates the map or slice literals a registration method returns
-// directly. Literals assigned to a local variable before being returned are left alone, since the
-// value that reaches the return can be reassigned or appended to.
-func analyzeRegistrationMethod(pass *analysis.Pass, funcDecl *ast.FuncDecl) {
+// analyzeRegistrationMethod validates map or slice literals whose type matches one of the
+// method's declared result types.
+func analyzeRegistrationMethod(pass *analysis.Pass, file *ast.File, funcDecl *ast.FuncDecl) {
 	if funcDecl.Body == nil {
 		return
 	}
 
+	fn, ok := pass.TypesInfo.Defs[funcDecl.Name].(*types.Func)
+	if !ok {
+		return
+	}
+	signature, ok := fn.Type().(*types.Signature)
+	if !ok {
+		return
+	}
+
 	ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
-		returnStmt, ok := n.(*ast.ReturnStmt)
+		if _, ok := n.(*ast.FuncLit); ok {
+			return false
+		}
+
+		compositeLit, ok := n.(*ast.CompositeLit)
 		if !ok {
 			return true
 		}
-		for _, result := range returnStmt.Results {
-			if compositeLit, ok := result.(*ast.CompositeLit); ok {
-				validateSorting(pass, compositeLit)
+
+		literalType := pass.TypesInfo.TypeOf(compositeLit)
+		if literalType == nil {
+			return true
+		}
+		for result := range signature.Results().Variables() {
+			if types.Identical(literalType, result.Type()) {
+				validateSorting(pass, file, compositeLit)
+				break
 			}
 		}
 		return true
@@ -123,7 +133,7 @@ func splitIntoSections(fset *token.FileSet, elts []ast.Expr) [][]ast.Expr {
 
 // validateSorting reports a composite literal whose entries are unsorted, checking each
 // blank- or comment-separated section independently.
-func validateSorting(pass *analysis.Pass, compositeLit *ast.CompositeLit) {
+func validateSorting(pass *analysis.Pass, file *ast.File, compositeLit *ast.CompositeLit) {
 	if compositeLit.Type == nil {
 		return
 	}
@@ -144,7 +154,6 @@ func validateSorting(pass *analysis.Pass, compositeLit *ast.CompositeLit) {
 
 	sections := splitIntoSections(pass.Fset, compositeLit.Elts)
 
-	var unsorted [][]ast.Expr
 	for _, section := range sections {
 		names := make([]string, 0, len(section))
 		resolvable := true
@@ -163,34 +172,32 @@ func validateSorting(pass *analysis.Pass, compositeLit *ast.CompositeLit) {
 		}
 
 		if !sort.SliceIsSorted(names, func(i, j int) bool { return lessFold(names[i], names[j]) }) {
-			unsorted = append(unsorted, section)
+			pass.Report(analysis.Diagnostic{
+				Pos:            section[0].Pos(),
+				Message:        "registration entries should be sorted alphabetically",
+				SuggestedFixes: sortFix(pass, file, compositeLit, section, isMap),
+			})
 		}
 	}
-
-	if len(unsorted) == 0 {
-		return
-	}
-
-	pass.Report(analysis.Diagnostic{
-		Pos:            compositeLit.Pos(),
-		Message:        "registration entries should be sorted alphabetically",
-		SuggestedFixes: sortFixes(pass, compositeLit, unsorted, isMap),
-	})
 }
 
-// sortFixes builds a single suggested fix reordering every unsorted section alphabetically. It
-// returns nil when entries cannot be rewritten safely (unresolvable key, entries sharing a line,
-// or a brace sharing an entry's line) so the diagnostic is still reported without a broken fix.
-func sortFixes(pass *analysis.Pass, compositeLit *ast.CompositeLit, sections [][]ast.Expr, isMap bool) []analysis.SuggestedFix {
+// sortFix builds a suggested fix for one unsorted section when it can be safely rewritten.
+func sortFix(pass *analysis.Pass, file *ast.File, compositeLit *ast.CompositeLit, section []ast.Expr, isMap bool) []analysis.SuggestedFix {
 	tf := pass.Fset.File(compositeLit.Pos())
 	if tf == nil {
+		return nil
+	}
+	if pass.ReadFile == nil {
 		return nil
 	}
 
 	// Bail out when a brace shares an entry's line: entries are copied as whole lines, so moving
 	// one would drag the brace with it (and a trailing brace makes LineStart(endLine+1) panic).
 	if elts := compositeLit.Elts; len(elts) > 0 {
-		if tf.Line(compositeLit.Lbrace) == tf.Line(elts[0].Pos()) ||
+		if section[0] == elts[0] && tf.Line(compositeLit.Lbrace) == tf.Line(elts[0].Pos()) {
+			return nil
+		}
+		if section[len(section)-1] == elts[len(elts)-1] &&
 			tf.Line(compositeLit.Rbrace) == tf.Line(elts[len(elts)-1].End()) {
 			return nil
 		}
@@ -201,24 +208,62 @@ func sortFixes(pass *analysis.Pass, compositeLit *ast.CompositeLit, sections [][
 		return nil
 	}
 
-	var edits []analysis.TextEdit
-	for _, section := range sections {
-		edit, ok := sortSectionEdit(tf, content, section, isMap)
-		if !ok {
-			return nil
-		}
-		edits = append(edits, edit)
+	if hasSpanningComment(file.Comments, tf, section) {
+		return nil
+	}
+	leadingComment := attachedLeadingComment(file.Comments, tf, compositeLit, section[0])
+	edit, ok := sortSectionEdit(tf, content, section, leadingComment, isMap)
+	if !ok {
+		return nil
 	}
 
 	return []analysis.SuggestedFix{{
 		Message:   "Sort registration entries alphabetically",
-		TextEdits: edits,
+		TextEdits: []analysis.TextEdit{edit},
 	}}
 }
 
+// hasSpanningComment reports whether a multiline comment crosses source lines occupied by a
+// section. Reordering whole lines would split such a comment into separate entry blocks.
+func hasSpanningComment(comments []*ast.CommentGroup, tf *token.File, section []ast.Expr) bool {
+	startLine := tf.Line(section[0].Pos())
+	endLine := tf.Line(section[len(section)-1].End())
+	for _, comment := range comments {
+		commentStart := tf.Line(comment.Pos())
+		commentEnd := tf.Line(comment.End())
+		if commentStart != commentEnd && commentStart <= endLine && commentEnd >= startLine {
+			return true
+		}
+	}
+
+	return false
+}
+
+// attachedLeadingComment returns a comment directly between two entries with no blank lines. Such
+// a comment is treated as part of the following entry so a suggested fix moves them together.
+func attachedLeadingComment(comments []*ast.CommentGroup, tf *token.File, compositeLit *ast.CompositeLit, first ast.Expr) *ast.CommentGroup {
+	for i := 1; i < len(compositeLit.Elts); i++ {
+		if compositeLit.Elts[i] != first {
+			continue
+		}
+
+		previous := compositeLit.Elts[i-1]
+		for _, comment := range comments {
+			if comment.Pos() > previous.End() && comment.End() < first.Pos() &&
+				tf.Line(comment.Pos()) == tf.Line(previous.End())+1 &&
+				tf.Line(first.Pos()) == tf.Line(comment.End())+1 {
+				return comment
+			}
+		}
+		break
+	}
+
+	return nil
+}
+
 // sortSectionEdit produces a text edit reordering one section's entries alphabetically. Each
-// entry is copied as the whole source lines it spans, so its trailing comment moves with it.
-func sortSectionEdit(tf *token.File, content []byte, section []ast.Expr, isMap bool) (analysis.TextEdit, bool) {
+// entry is copied as the whole source lines it spans, so its attached comments move with it.
+func sortSectionEdit(tf *token.File, content []byte, section []ast.Expr, leadingComment *ast.CommentGroup, isMap bool) (analysis.TextEdit, bool) {
 	type block struct {
 		key  string
 		text []byte
@@ -234,6 +279,9 @@ func sortSectionEdit(tf *token.File, content []byte, section []ast.Expr, isMap b
 		}
 
 		startLine := tf.Line(elt.Pos())
+		if i == 0 && leadingComment != nil {
+			startLine = tf.Line(leadingComment.Pos())
+		}
 		endLine := tf.Line(elt.End())
 		if i > 0 && startLine <= prevEndLine {
 			return analysis.TextEdit{}, false // entries share a line; not safely reorderable
@@ -272,23 +320,18 @@ func lessFold(a, b string) bool {
 // sortKey returns the alphabetical sort key for a registration entry: the map key for map
 // literals, the resource struct or constructor name for slice literals.
 func sortKey(elt ast.Expr, isMap bool) (string, bool) {
-	if isMap {
-		kv, ok := elt.(*ast.KeyValueExpr)
-		if !ok {
-			return "", false
-		}
-		lit, ok := kv.Key.(*ast.BasicLit)
-		if !ok || lit.Kind != token.STRING {
-			return "", false
-		}
-		key, err := strconv.Unquote(lit.Value)
-		if err != nil {
-			return "", false
-		}
-		return key, true
+	if !isMap {
+		return sliceEntryKey(elt)
 	}
 
-	return sliceEntryKey(elt)
+	kv, ok := elt.(*ast.KeyValueExpr)
+	if !ok {
+		return "", false
+	}
+	if lit, ok := kv.Key.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+		return sliceEntryKey(lit)
+	}
+	return "", false
 }
 
 // sliceEntryKey extracts the sort key from a typed or framework slice entry: the struct type

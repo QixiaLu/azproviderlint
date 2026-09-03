@@ -24,8 +24,8 @@ func (r Registration) SupportedDataSources() map[string]*pluginsdk.Resource {
 }
 
 func (r Registration) InvalidSupportedResources() map[string]*pluginsdk.Resource {
-	return map[string]*pluginsdk.Resource{ // want `registration entries should be sorted alphabetically`
-		"azurerm_availability_set":    nil,
+	return map[string]*pluginsdk.Resource{
+		"azurerm_availability_set":    nil, // want `registration entries should be sorted alphabetically`
 		"azurerm_dedicated_host":      nil,
 		"azurerm_managed_disk":        nil,
 		"azurerm_disk_encryption_set": nil,
@@ -33,11 +33,15 @@ func (r Registration) InvalidSupportedResources() map[string]*pluginsdk.Resource
 	}
 }
 
-// SupportedResourcesViaVariableNotReported is not reported: the map is built in a local variable
-// rather than returned directly, and only directly returned literals are checked.
-func (r Registration) SupportedResourcesViaVariableNotReported() map[string]*pluginsdk.Resource {
+func (r Registration) SupportedResourcesViaVariable() map[string]*pluginsdk.Resource {
+	lookup := map[string]string{
+		"z": "last",
+		"a": "first",
+	}
+	_ = lookup
+
 	resources := map[string]*pluginsdk.Resource{
-		"azurerm_availability_set":    nil,
+		"azurerm_availability_set":    nil, // want `registration entries should be sorted alphabetically`
 		"azurerm_dedicated_host":      nil,
 		"azurerm_managed_disk":        nil,
 		"azurerm_disk_encryption_set": nil,
@@ -60,12 +64,12 @@ func (r Registration) SectionedDataSources() map[string]*pluginsdk.Resource {
 }
 
 func (r Registration) InvalidSectionedDataSources() map[string]*pluginsdk.Resource {
-	return map[string]*pluginsdk.Resource{ // want `registration entries should be sorted alphabetically`
+	return map[string]*pluginsdk.Resource{
 		// CDN
 		"azurerm_cdn_profile": nil,
 
 		// FrontDoor
-		"azurerm_cdn_frontdoor_profile":       nil,
+		"azurerm_cdn_frontdoor_profile":       nil, // want `registration entries should be sorted alphabetically`
 		"azurerm_cdn_frontdoor_custom_domain": nil,
 		"azurerm_cdn_frontdoor_endpoint":      nil,
 	}
@@ -79,17 +83,15 @@ func (r Registration) Resources() []sdk.Resource {
 }
 
 func (r Registration) InvalidResources() []sdk.Resource {
-	return []sdk.Resource{ // want `registration entries should be sorted alphabetically`
-		WorkspaceResource{},
+	return []sdk.Resource{
+		WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
 		ApiManagementResource{},
 	}
 }
 
-// ResourcesViaVariableNotReported is not reported: the slice is built in a local variable rather
-// than returned directly.
-func (r Registration) ResourcesViaVariableNotReported() []sdk.Resource {
+func (r Registration) ResourcesViaVariable() []sdk.Resource {
 	resources := []sdk.Resource{
-		WorkspaceResource{},
+		WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
 		ApiManagementResource{},
 	}
 
@@ -97,8 +99,8 @@ func (r Registration) ResourcesViaVariableNotReported() []sdk.Resource {
 }
 
 func (r Registration) InvalidPointerResources() []sdk.Resource {
-	return []sdk.Resource{ // want `registration entries should be sorted alphabetically`
-		&WorkspaceResource{},
+	return []sdk.Resource{
+		&WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
 		&ApiManagementResource{},
 	}
 }
@@ -111,8 +113,8 @@ func (r Registration) QualifiedResources() []sdk.Resource {
 }
 
 func (r Registration) InvalidQualifiedResources() []sdk.Resource {
-	return []sdk.Resource{ // want `registration entries should be sorted alphabetically`
-		typed.NetworkResource{},
+	return []sdk.Resource{
+		typed.NetworkResource{}, // want `registration entries should be sorted alphabetically`
 		typed.ComputeResource{},
 	}
 }
@@ -125,8 +127,8 @@ func (r Registration) FrameworkResources() []func() framework.Resource {
 }
 
 func (r Registration) InvalidFrameworkResources() []func() framework.Resource {
-	return []func() framework.Resource{ // want `registration entries should be sorted alphabetically`
-		newWorkspaceResource,
+	return []func() framework.Resource{
+		newWorkspaceResource, // want `registration entries should be sorted alphabetically`
 		newApiManagementResource,
 	}
 }
@@ -139,8 +141,8 @@ func (r Registration) WebsiteCategories() []string {
 }
 
 func (r Registration) InvalidWebsiteCategories() []string {
-	return []string{ // want `registration entries should be sorted alphabetically`
-		"Network",
+	return []string{
+		"Network", // want `registration entries should be sorted alphabetically`
 		"Compute",
 	}
 }
@@ -156,8 +158,17 @@ func (r Registration) CaseInsensitiveCategories() []string {
 }
 
 func (r Registration) InvalidCaseInsensitiveCategories() []string {
-	return []string{ // want `registration entries should be sorted alphabetically`
-		"Cherry",
+	return []string{
+		"Cherry", // want `registration entries should be sorted alphabetically`
+		"apple",
+	}
+}
+
+func (r Registration) AttachedEntryComment() []string {
+	return []string{
+		"cherry",
+		// zebra is special
+		"zebra", // want `registration entries should be sorted alphabetically`
 		"apple",
 	}
 }
@@ -172,11 +183,9 @@ func (r Registration) UnresolvableEntriesNotReported() []sdk.Resource {
 	}
 }
 
-// AppendedResourcesViaVariableNotReported is not reported: the slice is built in a local variable
-// and appended to before being returned, so it is not a directly returned literal.
-func (r Registration) AppendedResourcesViaVariableNotReported() []sdk.Resource {
+func (r Registration) AppendedResourcesViaVariable() []sdk.Resource {
 	resources := []sdk.Resource{
-		WorkspaceResource{},
+		WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
 		ApiManagementResource{},
 	}
 
@@ -190,6 +199,24 @@ func (r Registration) AppendedResourcesViaVariableNotReported() []sdk.Resource {
 func (r Registration) BraceSharingNotFixed() []sdk.Resource {
 	return []sdk.Resource{WorkspaceResource{}, // want `registration entries should be sorted alphabetically`
 		ApiManagementResource{}}
+}
+
+// PartiallyFixableSections leaves the same-line section unchanged and fixes the safe section.
+func (r Registration) PartiallyFixableSections() []string {
+	return []string{
+		"zebra", "apple", // want `registration entries should be sorted alphabetically`
+
+		"dog", // want `registration entries should be sorted alphabetically`
+		"cat",
+	}
+}
+
+// SpanningBlockCommentNotFixed cannot be safely reordered by whole source lines.
+func (r Registration) SpanningBlockCommentNotFixed() []string {
+	return []string{
+		/* want `registration entries should be sorted alphabetically` */ "zebra", /* note
+		spanning */"apple",
+	}
 }
 
 type ApiManagementResource struct{}
