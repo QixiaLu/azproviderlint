@@ -4,6 +4,7 @@ package AZS008
 
 import (
 	"bytes"
+	"flag"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -25,9 +26,20 @@ var Analyzer = &analysis.Analyzer{
 	Run:  run,
 }
 
+// checkGenerated also checks generated registration_gen.go files (autoRegistration receiver);
+// an unsorted one means the generator's input or template needs fixing.
+var checkGenerated bool
+
+func init() {
+	Analyzer.Flags.Init("AZS008", flag.ContinueOnError)
+	Analyzer.Flags.BoolVar(&checkGenerated, "generated", true,
+		"check generated registration_gen.go files (false skips them)")
+}
+
 func run(pass *analysis.Pass) (any, error) {
 	for _, file := range pass.Files {
-		if filepath.Base(pass.Fset.Position(file.Pos()).Filename) != "registration.go" {
+		base := filepath.Base(pass.Fset.Position(file.Pos()).Filename)
+		if base != "registration.go" && (!checkGenerated || base != "registration_gen.go") {
 			continue
 		}
 
@@ -46,7 +58,8 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// hasRegistrationReceiver reports whether the function has a Registration receiver.
+// hasRegistrationReceiver reports whether the function has a Registration receiver, including
+// the generated autoRegistration variant.
 func hasRegistrationReceiver(funcDecl *ast.FuncDecl) bool {
 	if funcDecl.Recv == nil || len(funcDecl.Recv.List) == 0 {
 		return false
@@ -64,7 +77,7 @@ func hasRegistrationReceiver(funcDecl *ast.FuncDecl) bool {
 		}
 	}
 
-	return typeName == "Registration"
+	return strings.HasSuffix(typeName, "Registration")
 }
 
 // analyzeRegistrationMethod validates map or slice literals whose type matches one of the
@@ -83,8 +96,6 @@ func analyzeRegistrationMethod(pass *analysis.Pass, file *ast.File, funcDecl *as
 		return
 	}
 
-	var unsorted bool
-	var edits []analysis.TextEdit
 	ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
 		if _, ok := n.(*ast.FuncLit); ok {
 			return false
@@ -101,28 +112,12 @@ func analyzeRegistrationMethod(pass *analysis.Pass, file *ast.File, funcDecl *as
 		}
 		for result := range signature.Results().Variables() {
 			if types.Identical(literalType, result.Type()) {
-				literalUnsorted, literalEdits := validateSorting(pass, file, compositeLit)
-				unsorted = unsorted || literalUnsorted
-				edits = append(edits, literalEdits...)
+				validateSorting(pass, file, compositeLit)
 				break
 			}
 		}
 		return true
 	})
-
-	if unsorted {
-		diagnostic := analysis.Diagnostic{
-			Pos:     funcDecl.Name.Pos(),
-			Message: "registration entries should be sorted alphabetically",
-		}
-		if len(edits) > 0 {
-			diagnostic.SuggestedFixes = []analysis.SuggestedFix{{
-				Message:   "Sort registration entries alphabetically",
-				TextEdits: edits,
-			}}
-		}
-		pass.Report(diagnostic)
-	}
 }
 
 // splitIntoSections groups composite-literal elements into sections separated by blank lines or
@@ -172,16 +167,18 @@ func startsSection(fset *token.FileSet, comments []*ast.CommentGroup, previous, 
 	return currentStart > previousEnd+1
 }
 
-// validateSorting checks each section independently and returns whether any section is unsorted,
-// along with edits for sections that can be safely rewritten.
-func validateSorting(pass *analysis.Pass, file *ast.File, compositeLit *ast.CompositeLit) (bool, []analysis.TextEdit) {
+// validateSorting checks each section independently and reports every unsorted one at its
+// first out-of-order entry, naming the keys, with a fix when the section can be safely
+// rewritten. Per-section reports keep `//azignore:AZS008` scoped to one section instead of
+// silencing the whole method.
+func validateSorting(pass *analysis.Pass, file *ast.File, compositeLit *ast.CompositeLit) {
 	if compositeLit.Type == nil {
-		return false, nil
+		return
 	}
 
 	typ := pass.TypesInfo.TypeOf(compositeLit)
 	if typ == nil {
-		return false, nil
+		return
 	}
 
 	var isMap bool
@@ -190,14 +187,10 @@ func validateSorting(pass *analysis.Pass, file *ast.File, compositeLit *ast.Comp
 		isMap = true
 	case *types.Slice:
 	default:
-		return false, nil
+		return
 	}
 
-	sections := splitIntoSections(pass.Fset, file.Comments, compositeLit.Elts)
-	unsorted := false
-	var edits []analysis.TextEdit
-
-	for _, section := range sections {
+	for _, section := range splitIntoSections(pass.Fset, file.Comments, compositeLit.Elts) {
 		names := make([]string, 0, len(section))
 		resolvable := true
 		for _, elt := range section {
@@ -214,15 +207,18 @@ func validateSorting(pass *analysis.Pass, file *ast.File, compositeLit *ast.Comp
 			continue
 		}
 
-		if !sort.SliceIsSorted(names, func(i, j int) bool { return lessFold(names[i], names[j]) }) {
-			unsorted = true
-			for _, fix := range sortFix(pass, file, compositeLit, section, isMap) {
-				edits = append(edits, fix.TextEdits...)
+		for i := 1; i < len(names); i++ {
+			if lessFold(names[i], names[i-1]) {
+				pass.Report(analysis.Diagnostic{
+					Pos: section[i].Pos(),
+					Message: "registration entries should be sorted alphabetically: `" +
+						names[i] + "` should come before `" + names[i-1] + "`",
+					SuggestedFixes: sortFix(pass, file, compositeLit, section, isMap),
+				})
+				break
 			}
 		}
 	}
-
-	return unsorted, edits
 }
 
 // sortFix builds a suggested fix for one unsorted section when it can be safely rewritten.
@@ -282,23 +278,26 @@ func hasSpanningComment(comments []*ast.CommentGroup, tf *token.File, section []
 	return false
 }
 
-// attachedLeadingComment returns a comment directly between two entries with no blank lines. Such
-// a comment is treated as part of the following entry so a suggested fix moves them together.
+// attachedLeadingComment returns a comment directly above entry with no blank lines around it.
+// Such a comment is treated as part of the entry so a suggested fix moves them together. For
+// the first entry the span starts at the opening brace instead of a previous entry.
 func attachedLeadingComment(comments []*ast.CommentGroup, tf *token.File, compositeLit *ast.CompositeLit, entry ast.Expr) *ast.CommentGroup {
-	for i := 1; i < len(compositeLit.Elts); i++ {
-		if compositeLit.Elts[i] != entry {
-			continue
-		}
-
-		previous := compositeLit.Elts[i-1]
-		for _, comment := range comments {
-			if comment.Pos() > previous.End() && comment.End() < entry.Pos() &&
-				tf.Line(comment.Pos()) == tf.Line(previous.End())+1 &&
-				tf.Line(entry.Pos()) == tf.Line(comment.End())+1 {
-				return comment
+	previousEnd := compositeLit.Lbrace
+	for i, elt := range compositeLit.Elts {
+		if elt == entry {
+			if i > 0 {
+				previousEnd = compositeLit.Elts[i-1].End()
 			}
+			break
 		}
-		break
+	}
+
+	for _, comment := range comments {
+		if comment.Pos() > previousEnd && comment.End() < entry.Pos() &&
+			tf.Line(comment.Pos()) == tf.Line(previousEnd)+1 &&
+			tf.Line(entry.Pos()) == tf.Line(comment.End())+1 {
+			return comment
+		}
 	}
 
 	return nil
