@@ -1,3 +1,7 @@
+## Unreleased
+
+- add rule `AZS008`: detect `registration.go` `Registration` method map keys and slice elements that are not sorted alphabetically — entries assigned to a local variable and then returned are followed to their composite literal definition, and sections separated by blank lines or comment lines are validated independently so grouped registrations keep their sections; reports carry a suggested fix applied via `-fix` that reorders each unsorted section, moving every entry's trailing comment with it
+
 ## v0.6.0 (2026-09-02)
 
 - add rule `AZG002`: single-use temporaries whose only use is `&v` should be inlined as `new(<expr>)` (go1.26; or `pointer.To` via `use`); new mode also rewrites existing `pointer.To(x)` calls unless `allow: pointer.To`; fixable with `-fix` ([#29](https://github.com/katbyte/azproviderlint/pull/29))

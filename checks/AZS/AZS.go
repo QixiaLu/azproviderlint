@@ -11,6 +11,7 @@ import (
 	AZS005 "github.com/katbyte/azproviderlint/checks/AZS/AZS005_resource_missing_data_source"
 	AZS006 "github.com/katbyte/azproviderlint/checks/AZS/AZS006_data_source_missing_properties"
 	AZS007 "github.com/katbyte/azproviderlint/checks/AZS/AZS007_optional_computed_missing_comment"
+	AZS008 "github.com/katbyte/azproviderlint/checks/AZS/AZS008_registration_entries_sorted"
 )
 
 // Checks contains all AZS (schema & typed SDK model) analyzers.
@@ -22,4 +23,5 @@ var Checks = []*analysis.Analyzer{
 	AZS005.Analyzer,
 	AZS006.Analyzer,
 	AZS007.Analyzer,
+	AZS008.Analyzer,
 }
