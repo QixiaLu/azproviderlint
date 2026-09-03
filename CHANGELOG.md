@@ -4,7 +4,6 @@
 
 ## v0.6.0 (2026-09-02)
 
-- add rule `AZG006`: single-use variables only used as an argument of a later call should be inlined (`x := flattenThing(...)` then `d.Set("key", x)`); sibling arguments must be literals or plain identifiers, the initializer must be single-line, and `max-gap` bounds the distance (default 100); `only-when-literals` and `maximum-arguments` tighten the rule; fixable with `-fix`
 - add rule `AZG002`: single-use temporaries whose only use is `&v` should be inlined as `new(<expr>)` (go1.26; or `pointer.To` via `use`); new mode also rewrites existing `pointer.To(x)` calls unless `allow: pointer.To`; fixable with `-fix` ([#29](https://github.com/katbyte/azproviderlint/pull/29))
 - **breaking**: rename `AZG002` to `AZV001` — it polices validation error messages, not general Go style, so it moves to the reserved AZV validation category; update any `//azignore:AZG002` comments and settings references ([#28](https://github.com/katbyte/azproviderlint/pull/28))
 - plugin settings: `enable`/`disable` entries can name a whole category (`enable: [AZG]` runs every AZG rule); `disable` still applies after `enable`
