@@ -4,6 +4,7 @@ package AZS008
 
 import (
 	"bytes"
+	"flag"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -25,9 +26,20 @@ var Analyzer = &analysis.Analyzer{
 	Run:  run,
 }
 
+// checkGenerated also checks generated registration_gen.go files (autoRegistration receiver);
+// an unsorted one means the generator's input or template needs fixing.
+var checkGenerated bool
+
+func init() {
+	Analyzer.Flags.Init("AZS008", flag.ContinueOnError)
+	Analyzer.Flags.BoolVar(&checkGenerated, "generated", true,
+		"check generated registration_gen.go files (false skips them)")
+}
+
 func run(pass *analysis.Pass) (any, error) {
 	for _, file := range pass.Files {
-		if filepath.Base(pass.Fset.Position(file.Pos()).Filename) != "registration.go" {
+		base := filepath.Base(pass.Fset.Position(file.Pos()).Filename)
+		if base != "registration.go" && (!checkGenerated || base != "registration_gen.go") {
 			continue
 		}
 
@@ -46,7 +58,8 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// hasRegistrationReceiver reports whether the function has a Registration receiver.
+// hasRegistrationReceiver reports whether the function has a Registration receiver, including
+// the generated autoRegistration variant.
 func hasRegistrationReceiver(funcDecl *ast.FuncDecl) bool {
 	if funcDecl.Recv == nil || len(funcDecl.Recv.List) == 0 {
 		return false
@@ -64,7 +77,7 @@ func hasRegistrationReceiver(funcDecl *ast.FuncDecl) bool {
 		}
 	}
 
-	return typeName == "Registration"
+	return strings.HasSuffix(typeName, "Registration")
 }
 
 // analyzeRegistrationMethod validates map or slice literals whose type matches one of the

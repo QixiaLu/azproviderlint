@@ -16,3 +16,13 @@ func TestAZS008(t *testing.T) {
 
 	analysistest.RunWithSuggestedFixes(t, dir, Analyzer, "azs008")
 }
+
+//nolint:paralleltest // mutates the package-level generated flag; must finish before parallel tests resume
+func TestAZS008SkipGenerated(t *testing.T) {
+	if err := Analyzer.Flags.Set("generated", "false"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = Analyzer.Flags.Set("generated", "true") }()
+
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "azs008nogen")
+}
