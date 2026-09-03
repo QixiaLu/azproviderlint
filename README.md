@@ -136,13 +136,14 @@ Rules are named `AZ<category letter><number>`, aligned with [tfproviderlint](htt
 
 | Rule | Description |
 |------|-------------|
-| [AZS001](checks/AZS/AZS001_typed_sdk_model_64bit_types) | typed sdk models must use explicit 64 bit |
-| [AZS002](checks/AZS/AZS002_schema_default_type_mismatch) | schema defaults must match the declared type |
-| [AZS003](checks/AZS/AZS003_schema_allows_empty_block) | optional blocks must not allow empty blocks |
-| [AZS004](checks/AZS/AZS004_enum_validation_possible_values) | enum validation must use the possible values helper |
-| [AZS005](checks/AZS/AZS005_resource_missing_data_source) | resources should have a matching data source |
-| [AZS006](checks/AZS/AZS006_data_source_missing_properties) | data sources must expose all the resource's properties |
+| [AZS001](checks/AZS/AZS001_typed_sdk_model_64bit_types) | Typed SDK model fields (tagged `tfschema`) must use 64-bit numeric types — `int64` not `int`/`int16`/`int32`, `float64` not `float32` — including slices, maps, pointers, named types, and aliases of them |
+| [AZS002](checks/AZS/AZS002_schema_default_type_mismatch) | Schema `Default` values must match the declared `Type` — a `bool` default on a `TypeInt` schema only fails at plan time; named constants are resolved via the type checker |
+| [AZS003](checks/AZS/AZS003_schema_allows_empty_block) | Optional/required `TypeList` blocks whose properties are all optional with no defaults allow `foo {}`, which can crash expand functions or cause spurious diffs — constrain with `AtLeastOneOf`/`ExactlyOneOf`, a `Required` property, or a `Default` |
+| [AZS004](checks/AZS/AZS004_enum_validation_possible_values) | `validation.StringInSlice` with a hand-written list of SDK enum values must use the SDK's `PossibleValuesFor<Enum>()` helper instead — partial lists reject valid API values, and even complete lists go stale when the SDK adds new ones |
+| [AZS005](checks/AZS/AZS005_resource_missing_data_source) | Registered resources must have a data source of the same name — checked across untyped plugin SDK maps, typed SDK slices and framework wrapped slices, including feature-flagged conditional registration |
+| [AZS006](checks/AZS/AZS006_data_source_missing_properties) | Data sources must expose the properties of their same-named resource — compares recursively collected schema property names per registration flavour (untyped maps, typed `Arguments()`/`Attributes()`, framework `Schema()`) and reports resource properties absent from the data source |
 | [AZS007](checks/AZS/AZS007_optional_computed_missing_comment) | optional+computed fields must have a Note: O+C comment |
+| [AZS008](checks/AZS/AZS008_registration_entries_sorted) | `registration.go` `Registration` method map keys and slice elements must be sorted alphabetically — validated per section split on blank lines or comment lines so grouped registrations keep their sections, following returned variables back to their composite literal definition |
 
 ### AZC — Clients & SDK Usage
 

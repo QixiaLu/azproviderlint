@@ -1,6 +1,7 @@
 ## Unreleased
 
 - add rule `AZG007`: detect struct literal fields explicitly set to their zero value (`Selector: nil`, `Name: ""`, `Count: 0`, `Enabled: false`) that should be omitted, since an omitted field already defaults to its zero value — pointer, string, numeric, and bool fields are flagged (slices/maps/interfaces and named-constant zeros are left alone), and test files are skipped; reports carry a suggested fix applied via `-fix`
+- add rule `AZS008`: detect `registration.go` `Registration` method map keys and slice elements that are not sorted alphabetically — entries assigned to a local variable and then returned are followed to their composite literal definition, and sections separated by blank lines or comment lines are validated independently so grouped registrations keep their sections; reports carry a suggested fix applied via `-fix` that reorders each unsorted section, moving every entry's trailing comment with it
 
 ## v0.6.0 (2026-09-02)
 
