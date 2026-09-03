@@ -3,6 +3,7 @@
 package AZG007
 
 import (
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/constant"
@@ -10,9 +11,8 @@ import (
 	"go/types"
 	"strings"
 
+	"github.com/katbyte/azproviderlint/lib/astx"
 	"golang.org/x/tools/go/analysis"
-	"golang.org/x/tools/go/analysis/passes/inspect"
-	"golang.org/x/tools/go/ast/inspector"
 )
 
 // Analyzer checks for fields explicitly initialised to their zero value in a struct literal —
@@ -21,96 +21,95 @@ import (
 // basic (string/numeric/bool) fields are flagged; slices, maps, and interfaces are left alone
 // because an explicit nil there can be a deliberate, readable signal. Zero values written as a
 // named constant (`Type: TypeNone`) are also left alone, since the name conveys intent. Test
-// files are skipped, since a zero entry in a test table is often semantically meaningful.
+// files are skipped by default (the tests flag opts in), since a zero entry in a test table is
+// often semantically meaningful.
 var Analyzer = &analysis.Analyzer{
-	Name:     "AZG007",
-	Doc:      "check for redundant zero-value assignments to struct literal fields that should be omitted",
-	URL:      "https://github.com/katbyte/azproviderlint/blob/main/checks/AZG/AZG007_redundant_zero_value_field/README.md",
-	Requires: []*analysis.Analyzer{inspect.Analyzer},
-	Run:      run,
+	Name: "AZG007",
+	Doc:  "check for redundant zero-value assignments to struct literal fields that should be omitted",
+	URL:  "https://github.com/katbyte/azproviderlint/blob/main/checks/AZG/AZG007_redundant_zero_value_field/README.md",
+	Run:  run,
+}
+
+// checkTests opts into reporting inside test files, which are skipped by default: a zero entry
+// in a test table is often a deliberate, meaningful row rather than redundant noise.
+var checkTests bool
+
+func init() {
+	Analyzer.Flags.Init("AZG007", flag.ContinueOnError)
+	Analyzer.Flags.BoolVar(&checkTests, "tests", false,
+		"also report in test files, where a zero entry in a test table is often meaningful (off by default)")
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	insp, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	if !ok {
-		return nil, nil
-	}
-
-	nodeFilter := []ast.Node{(*ast.CompositeLit)(nil)}
-
-	// All comment groups across the package's files, used to avoid deleting a comment that
-	// leads the field following the one being removed. Each file's comments are position-sorted.
-	var commentGroups []*ast.CommentGroup
-	for _, f := range pass.Files {
-		commentGroups = append(commentGroups, f.Comments...)
-	}
-
-	insp.Preorder(nodeFilter, func(n ast.Node) {
-		compositeLit, ok := n.(*ast.CompositeLit)
-		if !ok {
-			return
+	for _, file := range pass.Files {
+		// A zero entry in a test table is often semantically meaningful, so skip test files
+		// unless the tests flag opts in.
+		if !checkTests && strings.HasSuffix(pass.Fset.Position(file.Pos()).Filename, "_test.go") {
+			continue
 		}
 
-		// A zero entry in a test table is often semantically meaningful, so skip test files.
-		if strings.HasSuffix(pass.Fset.Position(compositeLit.Pos()).Filename, "_test.go") {
-			return
-		}
+		// This file's comment groups, position-sorted, used to avoid deleting a comment that
+		// leads the field following the one being removed.
+		commentGroups := file.Comments
 
-		structType := structTypeOf(pass.TypesInfo.TypeOf(compositeLit))
-		if structType == nil {
-			return
-		}
-
-		for i, elt := range compositeLit.Elts {
-			kv, ok := elt.(*ast.KeyValueExpr)
+		ast.Inspect(file, func(n ast.Node) bool {
+			compositeLit, ok := n.(*ast.CompositeLit)
 			if !ok {
-				continue
+				return true
 			}
 
-			keyIdent, ok := kv.Key.(*ast.Ident)
-			if !ok {
-				continue
-			}
-
-			fieldObj, _, _ := types.LookupFieldOrMethod(structType, true, pass.Pkg, keyIdent.Name)
-			field, ok := fieldObj.(*types.Var)
-			if !ok {
-				continue
-			}
-
-			message := redundantZeroMessage(pass, field.Type(), kv.Value, keyIdent.Name)
-			if message == "" {
-				continue
-			}
-
-			// Delete the element up to the start of the next one (or the closing brace for the
-			// last element), which takes the trailing comma and any trailing comment with it;
-			// gofmt collapses the leftover whitespace afterwards.
-			end := compositeLit.Rbrace
-			if i+1 < len(compositeLit.Elts) {
-				end = compositeLit.Elts[i+1].Pos()
-			}
-
-			// A comment on a later line than this field leads the following field, so stop the
-			// deletion before it; a same-line trailing comment stays inside the removed span.
-			eltLine := pass.Fset.Position(elt.End()).Line
-			for _, cg := range commentGroups {
-				if cg.Pos() > elt.End() && cg.Pos() < end && pass.Fset.Position(cg.Pos()).Line > eltLine {
-					end = cg.Pos()
-					break
+			for i, elt := range compositeLit.Elts {
+				kv, ok := elt.(*ast.KeyValueExpr)
+				if !ok {
+					continue
 				}
+
+				keyIdent, ok := kv.Key.(*ast.Ident)
+				if !ok {
+					continue
+				}
+
+				field, ok := pass.TypesInfo.Uses[keyIdent].(*types.Var)
+				if !ok || !field.IsField() {
+					continue
+				}
+
+				message := redundantZeroMessage(pass, field.Type(), kv.Value, keyIdent.Name)
+				if message == "" {
+					continue
+				}
+
+				// Delete the element up to the start of the next one (or the closing brace for
+				// the last element), which takes the trailing comma and any trailing comment
+				// with it; gofmt collapses the leftover whitespace afterwards.
+				end := compositeLit.Rbrace
+				if i+1 < len(compositeLit.Elts) {
+					end = compositeLit.Elts[i+1].Pos()
+				}
+
+				// A comment on a later line than this field leads the following field, so stop
+				// the deletion before it; a same-line trailing comment stays inside the span.
+				eltLine := pass.Fset.Position(elt.End()).Line
+				for _, cg := range commentGroups {
+					if cg.Pos() > elt.End() && cg.Pos() < end && pass.Fset.Position(cg.Pos()).Line > eltLine {
+						end = cg.Pos()
+						break
+					}
+				}
+
+				pass.Report(analysis.Diagnostic{
+					Pos:     kv.Pos(),
+					Message: message,
+					SuggestedFixes: []analysis.SuggestedFix{{
+						Message:   "Remove the redundant field",
+						TextEdits: []analysis.TextEdit{{Pos: kv.Pos(), End: end}},
+					}},
+				})
 			}
 
-			pass.Report(analysis.Diagnostic{
-				Pos:     kv.Pos(),
-				Message: message,
-				SuggestedFixes: []analysis.SuggestedFix{{
-					Message:   "Remove the redundant field",
-					TextEdits: []analysis.TextEdit{{Pos: kv.Pos(), End: end}},
-				}},
-			})
-		}
-	})
+			return true
+		})
+	}
 
 	return nil, nil
 }
@@ -122,7 +121,7 @@ func run(pass *analysis.Pass) (any, error) {
 func redundantZeroMessage(pass *analysis.Pass, fieldType types.Type, value ast.Expr, name string) string {
 	switch underlying := fieldType.Underlying().(type) {
 	case *types.Pointer:
-		if isNilIdent(pass, value) {
+		if astx.IsNilValue(pass, value) {
 			return fmt.Sprintf("redundant nil assignment to pointer field %q - omit the field", name)
 		}
 	case *types.Basic:
@@ -131,16 +130,6 @@ func redundantZeroMessage(pass *analysis.Pass, fieldType types.Type, value ast.E
 		}
 	}
 	return ""
-}
-
-// isNilIdent reports whether expr is the predeclared nil identifier.
-func isNilIdent(pass *analysis.Pass, expr ast.Expr) bool {
-	ident, ok := expr.(*ast.Ident)
-	if !ok {
-		return false
-	}
-	_, isNil := pass.TypesInfo.Uses[ident].(*types.Nil)
-	return isNil
 }
 
 // isBasicZeroLit reports whether value is a literal zero value for the given basic type: the
@@ -168,19 +157,4 @@ func isBasicZeroLit(pass *analysis.Pass, basic *types.Basic, value ast.Expr) boo
 		return cv != nil && constant.Sign(cv) == 0
 	}
 	return false
-}
-
-// structTypeOf returns the struct type behind t, dereferencing a pointer if needed, or nil when
-// t is not a struct.
-func structTypeOf(t types.Type) types.Type {
-	if t == nil {
-		return nil
-	}
-	if ptr, ok := t.Underlying().(*types.Pointer); ok {
-		t = ptr.Elem()
-	}
-	if _, ok := t.Underlying().(*types.Struct); ok {
-		return t
-	}
-	return nil
 }

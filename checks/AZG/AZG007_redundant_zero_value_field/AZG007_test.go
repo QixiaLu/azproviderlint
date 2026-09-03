@@ -15,4 +15,8 @@ func TestAZG007(t *testing.T) {
 	dir := filepath.Join(filepath.Dir(filename), "testdata")
 
 	analysistest.RunWithSuggestedFixes(t, dir, Analyzer, "azg007")
+
+	checkTests = true
+	analysistest.Run(t, dir, Analyzer, "azg007test")
+	checkTests = false
 }
