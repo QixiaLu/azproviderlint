@@ -43,7 +43,7 @@ func init() {
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	ignored := azignore.Lines(pass, ruleName)
+	ignored := azignore.ExactLines(pass, ruleName)
 
 	for _, file := range pass.Files {
 		// A zero entry in a test table is often semantically meaningful, so skip test files

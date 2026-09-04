@@ -1,6 +1,6 @@
 ## Unreleased
 
-- `AZG007`: a `//azignore:AZG007` directive immediately above or on a composite literal's opening line suppresses every finding within that literal, including nested literals ([#33](https://github.com/katbyte/azproviderlint/pull/33))
+- `AZG007`: a `//azignore:AZG007` directive on a composite literal's opening line suppresses every finding within that literal, including nested literals ([#33](https://github.com/katbyte/azproviderlint/pull/33))
 
 ## v0.7.0 (2026-09-03)
 
