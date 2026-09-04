@@ -74,6 +74,23 @@ func invalidNumericAndBool() *Settings {
 	return &Settings{}
 }
 
+func ignoredCompositeLiteralAbove() *Settings {
+	//azignore:AZG007 - all fields in this literal are intentionally populated
+	return &Settings{
+		Retries: 0,
+		Ratio:   0.0,
+		Enabled: false,
+	}
+}
+
+func ignoredCompositeLiteralSameLine() *Settings {
+	return &Settings{ //azignore:AZG007 - all fields in this literal are intentionally populated
+		Retries: 0,
+		Ratio:   0.0,
+		Enabled: false,
+	}
+}
+
 // Should NOT be flagged: slices and maps default to nil meaningfully
 func validSliceAndMap() *Config {
 	return &Config{

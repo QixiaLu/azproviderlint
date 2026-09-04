@@ -72,3 +72,17 @@ To ignore only this check on a line — leaving any other azproviderlint checks 
 ```go
 Selector: nil, //azignore:AZG007 - <reason>
 ```
+
+Placing the directive immediately above or on the opening line of a composite literal
+suppresses every AZG007 report within that literal:
+
+```go
+//azignore:AZG007 - all nested objects must be fully populated
+return UserFeatures{
+	// ...
+}
+
+return UserFeatures{ //azignore:AZG007 - all nested objects must be fully populated
+	// ...
+}
+```
