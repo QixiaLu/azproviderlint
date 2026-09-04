@@ -1,3 +1,7 @@
+## Unreleased
+
+- `AZG002`/`AZG005`/`AZG006`: no longer inline past an intervening statement that reads a variable the initializer's calls may mutate through a pointer-like argument or receiver (`result := astutil.Apply(f, ...)` then a read of `f`), nor when an intervening call receives an operand pointer-like — moving the call re-orders observable side effects
+
 ## v0.7.0 (2026-09-03)
 
 - add rule `AZG008`: pointer dereferences (`*props.Status`) must have a reachable nil guard; fixes to `pointer.From`/`pointer.FromEnum`; options `include-parameters`, `tests`, `fix-with` ([#31](https://github.com/katbyte/azproviderlint/pull/31))
