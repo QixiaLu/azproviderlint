@@ -1,3 +1,7 @@
+## Unreleased
+
+- `AZG007`: a `//azignore:AZG007` directive immediately above or on a composite literal's opening line suppresses every finding within that literal, including nested literals ([#33](https://github.com/katbyte/azproviderlint/pull/33))
+
 ## v0.7.0 (2026-09-03)
 
 - add rule `AZG008`: pointer dereferences (`*props.Status`) must have a reachable nil guard; fixes to `pointer.From`/`pointer.FromEnum`; options `include-parameters`, `tests`, `fix-with` ([#31](https://github.com/katbyte/azproviderlint/pull/31))
