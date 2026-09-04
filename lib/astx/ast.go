@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"go/types"
 
+	"github.com/katbyte/azproviderlint/lib/pointerpkg"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -143,7 +144,9 @@ func UnsafeToMovePast(pass *analysis.Pass, expr ast.Expr, stmts []ast.Stmt) bool
 
 // callMutables collects the variables that calls inside n may write through: the root of any
 // argument or method receiver whose type is pointer-like (pointer, slice, map, chan, func,
-// or interface), since the callee shares that memory with the caller.
+// or interface), since the callee shares that memory with the caller. The go-azure-helpers
+// pointer package is pure by construction, so its calls mark nothing — `pointer.From(x)`
+// never justifies keeping a temporary.
 func callMutables(pass *analysis.Pass, n ast.Node) map[*types.Var]bool {
 	mutables := map[*types.Var]bool{}
 	mark := func(e ast.Expr) {
@@ -167,11 +170,15 @@ func callMutables(pass *analysis.Pass, n ast.Node) map[*types.Var]bool {
 		if tv, ok := pass.TypesInfo.Types[call.Fun]; ok && tv.IsType() {
 			return true // a conversion copies its operand
 		}
+		if sel, ok := ast.Unparen(call.Fun).(*ast.SelectorExpr); ok {
+			if fn, ok := pass.TypesInfo.Uses[sel.Sel].(*types.Func); ok && fn.Pkg() != nil &&
+				fn.Pkg().Path() == pointerpkg.PkgPath {
+				return true // pure: reads through its arguments, never writes
+			}
+			mark(sel.X) // method receiver
+		}
 		for _, arg := range call.Args {
 			mark(arg)
-		}
-		if sel, ok := ast.Unparen(call.Fun).(*ast.SelectorExpr); ok {
-			mark(sel.X) // method receiver
 		}
 		return true
 	})

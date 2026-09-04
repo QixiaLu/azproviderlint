@@ -1,5 +1,9 @@
 package azg006
 
+import (
+	"github.com/hashicorp/go-azure-helpers/lang/pointer"
+)
+
 type props struct{ V *string }
 
 type resourceData struct{}
@@ -117,4 +121,11 @@ func validInterveningCallMutation(d resourceData, t *tree) {
 func invalidValueOperandUntouched(d resourceData, p props, other int) {
 	sink(other)
 	d.Set("apns_credential", flattenThing(p.V))
+}
+
+// Should be flagged: pointer.From is pure, so an intervening plain read of p cannot observe
+// anything the initializer's call did.
+func invalidPureHelperOperand(d resourceData, p props) {
+	_ = p.V
+	d.Set("name", pointer.From(p.V))
 }
