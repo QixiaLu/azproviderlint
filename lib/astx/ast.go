@@ -90,6 +90,11 @@ func UnsafeToMovePast(pass *analysis.Pass, expr ast.Expr, stmts []ast.Stmt) bool
 		return id != nil && operands[pass.TypesInfo.Uses[id]]
 	}
 
+	// variables the expression's own calls may write through — pointer-like arguments and
+	// receivers (`astutil.Apply(f, ...)` mutates *f); an intervening statement reading one
+	// would observe side effects that moving the expression re-orders
+	mutables := callMutables(pass, expr)
+
 	unsafe := false
 	for _, stmt := range stmts {
 		// only a declaration in this same statement list can shadow a name at the moved
@@ -114,12 +119,71 @@ func UnsafeToMovePast(pass *analysis.Pass, expr ast.Expr, stmts []ast.Stmt) bool
 				if x.Tok == token.ASSIGN {
 					unsafe = unsafe || writes(x.Key) || writes(x.Value)
 				}
+			case *ast.Ident:
+				// reads a variable the moved expression's calls may have written through
+				if v, ok := pass.TypesInfo.Uses[x].(*types.Var); ok {
+					unsafe = unsafe || mutables[v]
+				}
 			}
 			return !unsafe
 		})
+		// an intervening call may write through an operand it receives pointer-like, just
+		// as the moved expression's calls may — either direction re-orders the effect
+		if !unsafe {
+			for v := range callMutables(pass, stmt) {
+				unsafe = unsafe || operands[v]
+			}
+		}
 		if unsafe {
 			return true
 		}
+	}
+	return false
+}
+
+// callMutables collects the variables that calls inside n may write through: the root of any
+// argument or method receiver whose type is pointer-like (pointer, slice, map, chan, func,
+// or interface), since the callee shares that memory with the caller.
+func callMutables(pass *analysis.Pass, n ast.Node) map[*types.Var]bool {
+	mutables := map[*types.Var]bool{}
+	mark := func(e ast.Expr) {
+		root := rootIdent(e)
+		if root == nil {
+			return
+		}
+		v, ok := pass.TypesInfo.Uses[root].(*types.Var)
+		if !ok {
+			return
+		}
+		if tv, ok := pass.TypesInfo.Types[e]; ok && tv.Type != nil && pointerLike(tv.Type) {
+			mutables[v] = true
+		}
+	}
+	ast.Inspect(n, func(x ast.Node) bool {
+		call, ok := x.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		if tv, ok := pass.TypesInfo.Types[call.Fun]; ok && tv.IsType() {
+			return true // a conversion copies its operand
+		}
+		for _, arg := range call.Args {
+			mark(arg)
+		}
+		if sel, ok := ast.Unparen(call.Fun).(*ast.SelectorExpr); ok {
+			mark(sel.X) // method receiver
+		}
+		return true
+	})
+	return mutables
+}
+
+// pointerLike reports whether a value of type t shares memory with the caller when passed to
+// a call.
+func pointerLike(t types.Type) bool {
+	switch t.Underlying().(type) {
+	case *types.Pointer, *types.Slice, *types.Map, *types.Chan, *types.Signature, *types.Interface:
+		return true
 	}
 	return false
 }
